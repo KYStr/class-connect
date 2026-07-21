@@ -213,18 +213,18 @@ create table push_subscriptions (
 -- Helper functions (§6.1)
 -- ============================================================
 create or replace function is_teacher_of(cid uuid) returns boolean
-language sql security definer stable as $$
+language sql security definer stable set search_path = public as $$
   select exists(select 1 from classes c where c.id = cid and c.teacher_id = auth.uid());
 $$;
 
 create or replace function is_guardian_of(sid uuid) returns boolean
-language sql security definer stable as $$
+language sql security definer stable set search_path = public as $$
   select exists(select 1 from guardianships g
                 where g.student_id = sid and g.parent_id = auth.uid());
 $$;
 
 create or replace function is_class_member(cid uuid) returns boolean
-language sql security definer stable as $$
+language sql security definer stable set search_path = public as $$
   select is_teacher_of(cid)
       or exists(select 1 from students s
                 join guardianships g on g.student_id = s.id
@@ -235,10 +235,10 @@ $$;
 -- Auth trigger: auto-create profile (§7.3)
 -- ============================================================
 create or replace function handle_new_user() returns trigger
-language plpgsql security definer as $$
+language plpgsql security definer set search_path = public as $$
 begin
-  insert into profiles(id, role, display_name)
-  values (new.id, coalesce((new.raw_user_meta_data->>'role')::role_t,'parent'),
+  insert into public.profiles(id, role, display_name)
+  values (new.id, coalesce((new.raw_user_meta_data->>'role')::public.role_t,'parent'),
           coalesce(new.raw_user_meta_data->>'display_name','User'))
   on conflict (id) do nothing;
   return new;
@@ -292,7 +292,8 @@ create policy profiles_self_upd on profiles for update using ( id = auth.uid() )
 -- classes / students / guardianships: members read; teacher manages
 create policy classes_read on classes for select using ( is_class_member(id) );
 create policy classes_teacher on classes for all using ( teacher_id = auth.uid() ) with check ( teacher_id = auth.uid() );
-create policy students_read on students for select using ( is_class_member(class_id) );
+-- Privacy: teachers see the full roster; a parent sees ONLY their own child (never classmates).
+create policy students_read on students for select using ( is_teacher_of(class_id) or is_guardian_of(id) );
 create policy students_teacher on students for all using ( is_teacher_of(class_id) ) with check ( is_teacher_of(class_id) );
 create policy guardianships_self on guardianships for select using ( parent_id = auth.uid() or is_teacher_of((select class_id from students s where s.id = student_id)) );
 
@@ -368,3 +369,19 @@ create policy invites_teacher on invites for all using ( is_teacher_of(class_id)
 -- push subscriptions: owner only
 create policy push_self on push_subscriptions for all
   using ( profile_id = auth.uid() ) with check ( profile_id = auth.uid() );
+
+-- ============================================================
+-- Grants — RLS is the gatekeeper, but roles still need table privileges.
+-- anon/authenticated are constrained by the policies above; service_role bypasses RLS.
+-- ============================================================
+grant usage on schema public to anon, authenticated, service_role;
+grant all on all tables in schema public to anon, authenticated, service_role;
+grant all on all sequences in schema public to anon, authenticated, service_role;
+grant all on all routines in schema public to anon, authenticated, service_role;
+
+alter default privileges in schema public
+  grant all on tables to anon, authenticated, service_role;
+alter default privileges in schema public
+  grant all on sequences to anon, authenticated, service_role;
+alter default privileges in schema public
+  grant all on routines to anon, authenticated, service_role;

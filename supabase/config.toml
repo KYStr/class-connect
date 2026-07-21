@@ -17,7 +17,7 @@ major_version = 15
 enabled = true
 port = 54323
 
-[inbucket]
+[local_smtp]
 enabled = true
 port = 54324
 
@@ -41,3 +41,8 @@ enabled = true
 
 [edge_runtime]
 enabled = true
+
+# Analytics (logflare) requires Docker exposed on tcp://localhost:2375 on Windows and otherwise
+# fails its health check, rolling back `supabase start`. Disabled for local dev.
+[analytics]
+enabled = false

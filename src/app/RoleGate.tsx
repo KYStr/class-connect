@@ -5,9 +5,10 @@ import type { Role } from '@/types/domain';
 // Route to the correct role's UI (DEVELOPMENT.md §9). Redirects to /login when signed out,
 // and blocks the wrong role from another role's routes.
 export function RoleGate({ allow, children }: { allow: Role; children: React.ReactNode }) {
-  const { role, loading } = useAuth();
+  const { role, loading, session, profile } = useAuth();
 
-  if (loading) {
+  // Wait while auth boots, or while a signed-in user's profile (role) is still loading.
+  if (loading || (session && !profile)) {
     return <div className="stage" style={{ alignItems: 'center' }} />;
   }
   if (!role) {

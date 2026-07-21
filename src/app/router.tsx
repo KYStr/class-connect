@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { RoleGate } from './RoleGate';
 import { LoginScreen } from '@/features/shared/LoginScreen';
+import { JoinScreen } from '@/features/shared/JoinScreen';
 import { ParentApp } from '@/features/parent/ParentApp';
 import { TeacherApp } from '@/features/teacher/TeacherApp';
 
@@ -9,6 +10,7 @@ import { TeacherApp } from '@/features/teacher/TeacherApp';
 export const router = createBrowserRouter([
   { path: '/', element: <Navigate to="/login" replace /> },
   { path: '/login', element: <LoginScreen /> },
+  { path: '/join/:code', element: <JoinScreen /> },
   {
     path: '/p/*',
     element: (

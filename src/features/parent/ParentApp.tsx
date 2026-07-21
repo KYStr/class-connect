@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { AppBar, EmptyState, Feature, PhoneShell, StatusBar, TabBar } from '@/ui';
 import type { TabItem } from '@/ui';
 import { useAuth } from '@/app/AuthProvider';
+import { useMyChildren } from '@/hooks/useMyChildren';
 
 // Parent shell (SPEC 2.1 / 3.1). P0 skeleton: dynamic tabs + empty states, no backend data yet.
 // Tabs 成長/成績 appear only when data exists (SPEC L2) — hidden here until services land (P2).
@@ -14,6 +15,8 @@ const BASE_TABS: TabItem[] = [
 export function ParentApp() {
   const { signOut } = useAuth();
   const [tab, setTab] = useState('home');
+  const { data: children } = useMyChildren();
+  const child = children?.[0];
 
   const heads: Record<string, string> = {
     home: '今天',
@@ -29,7 +32,7 @@ export function ParentApp() {
             <StatusBar />
             <AppBar
               variant="p"
-              classLabel="🏫 一年甲班 · 我的清單"
+              classLabel={`🏫 ${child ? `${child.name}的清單` : '我的清單'}`}
               title={heads[tab] ?? '首頁'}
               onLogout={signOut}
             />

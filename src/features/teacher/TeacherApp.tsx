@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { AppBar, EmptyState, Feature, PhoneShell, StatusBar, TabBar } from '@/ui';
 import type { TabItem } from '@/ui';
 import { useAuth } from '@/app/AuthProvider';
+import { useMyClasses, useRoster } from '@/hooks/useClasses';
+import { ClassManager } from './ClassManager';
 
 // Teacher shell (SPEC 2.2 / 3.2). P0 skeleton: fixed 5 tabs + overview with to-do/stats scaffold.
 const TABS: TabItem[] = [
@@ -15,6 +17,10 @@ const TABS: TabItem[] = [
 export function TeacherApp() {
   const { signOut } = useAuth();
   const [tab, setTab] = useState('overview');
+  const { data: classes } = useMyClasses();
+  const cls = classes?.[0];
+  const { data: roster } = useRoster(cls?.id);
+  const classSize = roster?.length ?? 0;
 
   const heads: Record<string, string> = {
     overview: '後台總覽',
@@ -32,7 +38,7 @@ export function TeacherApp() {
             <StatusBar />
             <AppBar
               variant="t"
-              classLabel="👩‍🏫 導師後台 · 一年甲班"
+              classLabel={`👩‍🏫 導師後台 · ${cls?.name ?? '尚未建立班級'}`}
               title={heads[tab] ?? '總覽'}
               onLogout={signOut}
             />
@@ -49,6 +55,7 @@ export function TeacherApp() {
               sub="0 則公告 · 0 項攜帶 · 即時更新"
               pct={0}
             />
+            <ClassManager />
             <div className="card">
               <div className="lab">🔔 今日待辦</div>
               <EmptyState icon="✅">目前沒有待辦事項</EmptyState>
@@ -56,7 +63,8 @@ export function TeacherApp() {
             <div className="stat-grid">
               <div className="stat">
                 <div className="num">
-                  0<small> 位</small>
+                  {classSize}
+                  <small> 位</small>
                 </div>
                 <div className="k">班級人數</div>
               </div>

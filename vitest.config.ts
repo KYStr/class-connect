@@ -10,6 +10,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    include: ['tests/**/*.test.ts', 'src/**/*.test.ts'],
+    // RLS tests need a running Supabase stack — run them via `pnpm test:rls` (separate config).
+    include: ['tests/unit/**/*.test.ts', 'src/**/*.test.ts'],
   },
 });

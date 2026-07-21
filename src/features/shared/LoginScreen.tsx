@@ -1,19 +1,41 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { PhoneShell, StatusBar, Button } from '@/ui';
-import { useAuth } from '@/app/AuthProvider';
+import { PhoneShell, StatusBar, Button, useToast } from '@/ui';
+import { signInWithPassword, signUp } from '@/services/auth';
 import { hasSupabaseEnv } from '@/lib/supabase';
 
-// Login (SPEC 3.1.A). P0: real auth is wired in P1; for now this previews either role
-// so the shells are reviewable without a backend.
+// Login (SPEC 3.1.A). Teacher email + password sign in / sign up. Parents join via /join/:code.
 export function LoginScreen() {
-  const { previewAs } = useAuth();
   const navigate = useNavigate();
-  const [account, setAccount] = useState('');
+  const { toast } = useToast();
+  const [mode, setMode] = useState<'signin' | 'signup'>('signin');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [displayName, setDisplayName] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
 
-  const enterAs = (role: 'parent' | 'teacher') => {
-    previewAs(role);
-    navigate(role === 'teacher' ? '/t' : '/p');
+  const submit = async () => {
+    setErr('');
+    if (!email || !password) {
+      setErr('請輸入 Email 與密碼');
+      return;
+    }
+    setBusy(true);
+    try {
+      if (mode === 'signup') {
+        await signUp({ email, password, role: 'teacher', displayName: displayName || '老師' });
+        toast('註冊成功，已登入');
+      } else {
+        await signInWithPassword(email, password);
+        toast('登入成功');
+      }
+      navigate('/t');
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : '登入失敗，請再試一次');
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -24,36 +46,69 @@ export function LoginScreen() {
           <div className="login">
             <div className="logo-badge">🎒</div>
             <div>
-              <h3>歡迎回來</h3>
-              <div className="sub">用孩子的座號或姓名登入</div>
+              <h3>{mode === 'signup' ? '建立老師帳號' : '歡迎回來'}</h3>
+              <div className="sub">
+                {mode === 'signup' ? '註冊後即可建立班級' : '老師登入後台'}
+              </div>
             </div>
+
+            {mode === 'signup' && (
+              <div className="field">
+                <label>顯示名稱</label>
+                <input
+                  className="in"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  placeholder="例如：王老師"
+                />
+              </div>
+            )}
             <div className="field">
-              <label>座號 / 姓名</label>
+              <label>Email</label>
               <input
                 className="in"
-                value={account}
-                onChange={(e) => setAccount(e.target.value)}
-                placeholder="例如：07 · 小宇"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="teacher@example.com"
               />
             </div>
             <div className="field">
-              <label>登入密碼</label>
-              <input className="in" type="password" placeholder="請輸入密碼" />
+              <label>密碼</label>
+              <input
+                className="in"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="至少 6 碼"
+              />
             </div>
-            <Button onClick={() => enterAs('parent')}>進入我孩子的專屬清單</Button>
+
+            {err && (
+              <div className="info" style={{ background: 'var(--pink-soft)', color: '#c33f4c' }}>
+                {err}
+              </div>
+            )}
+
+            <Button tone="amber" onClick={submit} disabled={busy}>
+              {busy ? '處理中…' : mode === 'signup' ? '註冊並進入後台' : '登入'}
+            </Button>
             <button
               className="ghost-btn"
-              style={{ borderColor: 'var(--accent)', color: '#c26a1f' }}
-              onClick={() => enterAs('teacher')}
+              onClick={() => {
+                setErr('');
+                setMode(mode === 'signup' ? 'signin' : 'signup');
+              }}
             >
-              我是老師 · 進入後台
+              {mode === 'signup' ? '已有帳號？改為登入' : '第一次使用？建立老師帳號'}
             </button>
-            <div style={{ fontSize: 11.5, color: 'var(--muted)' }}>
-              一個帳號只會看到自己孩子的資料 🔐
+
+            <div style={{ fontSize: 11.5, color: 'var(--muted)', lineHeight: 1.5 }}>
+              家長請用老師提供的邀請連結加入 🔐
             </div>
             {!hasSupabaseEnv && (
-              <div style={{ fontSize: 11, color: 'var(--muted)', lineHeight: 1.5 }}>
-                （P0 預覽模式：尚未連接 Supabase，先選身份預覽介面）
+              <div style={{ fontSize: 11, color: 'var(--pink)', lineHeight: 1.5 }}>
+                尚未設定 Supabase 連線（.env）
               </div>
             )}
           </div>
