@@ -1,0 +1,1025 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>班級連 · 一年甲班親師平台 · 互動 Demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Noto+Serif+TC:wght@700;900&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --ink:#212a33; --ink-soft:#4b5a67; --muted:#8a97a3; --line:#e9edf1; --card:#fff;
+    --primary:#2f9e8f; --primary-deep:#227a6e; --primary-soft:#e4f4f1;
+    --accent:#f2994a; --accent-soft:#fdefe1; --pink:#ef6f7b; --pink-soft:#fdeaec;
+    --blue:#4a86c5; --blue-soft:#e7f0f9;
+    --paper:#fbfaf7;
+    --radius:26px; --shadow-lift:0 34px 70px -30px rgba(31,45,58,.45);
+    --shadow-card:0 1px 2px rgba(31,45,58,.05), 0 12px 24px -18px rgba(31,45,58,.5);
+    --font-display:"Noto Serif TC",serif;
+    font-family:"Noto Sans TC",system-ui,-apple-system,"Segoe UI",sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{color:var(--ink);line-height:1.6;-webkit-font-smoothing:antialiased;
+    background:
+      radial-gradient(circle at center, rgba(34,44,53,.028) 1px, transparent 1.4px) 0 0/24px 24px,
+      radial-gradient(1200px 600px at 12% -5%,#e8f6f2 0%,transparent 55%),
+      radial-gradient(1000px 620px at 100% 0%,#fdeede 0%,transparent 50%),
+      linear-gradient(180deg,var(--paper) 0%,#f2f4f2 100%);
+    min-height:100vh;}
+
+  /* ---------- top bar ---------- */
+  .topbar{position:sticky;top:0;z-index:40;backdrop-filter:blur(10px);
+    background:rgba(251,252,253,.82);border-bottom:1px solid var(--line);}
+  .topbar .in{max-width:1180px;margin:0 auto;padding:14px 22px;display:flex;align-items:center;gap:14px;}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:900;font-size:18px;}
+  .brand .logo{width:34px;height:34px;border-radius:10px;background:linear-gradient(150deg,var(--primary),var(--primary-deep));
+    display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 8px 16px -8px rgba(47,158,143,.8);}
+  .brand .grad{background:linear-gradient(120deg,var(--primary),var(--accent));-webkit-background-clip:text;background-clip:text;color:transparent;}
+  .topbar .note{font-size:12.5px;color:var(--muted);margin-left:6px;}
+  .topbar .sp{margin-left:auto;}
+  .rbtn{border:1px solid var(--line);background:#fff;border-radius:10px;padding:8px 14px;font-family:inherit;
+    font-size:13px;font-weight:700;color:var(--ink-soft);cursor:pointer;transition:.2s;}
+  .rbtn:hover{border-color:var(--primary);color:var(--primary-deep);transform:translateY(-1px);}
+
+  /* ---------- intro ---------- */
+  .intro{max-width:1180px;margin:0 auto;padding:34px 22px 6px;text-align:center;}
+  .intro h1{font-family:var(--font-display);font-size:clamp(28px,4vw,44px);font-weight:900;letter-spacing:-.01em;line-height:1.14;}
+  .intro h1 .em{color:var(--primary-deep);font-style:normal;}
+  .intro p{color:var(--ink-soft);max-width:600px;margin:12px auto 0;font-size:15.5px;}
+  .flow{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:16px;flex-wrap:wrap;}
+  .flow .tag{display:inline-flex;align-items:center;gap:7px;background:#fff;border:1px solid var(--line);
+    border-radius:999px;padding:8px 15px;font-size:13px;font-weight:700;box-shadow:0 10px 22px -18px rgba(31,45,58,.5);}
+  .flow .tag i{width:10px;height:10px;border-radius:4px;}
+  .flow .tag.p i{background:var(--primary);} .flow .tag.t i{background:var(--accent);}
+  .flow .arrow{color:var(--muted);font-size:18px;animation:slide 1.6s ease-in-out infinite;}
+  @keyframes slide{50%{transform:translateX(4px);}}
+
+  /* ---------- stage ---------- */
+  .stage{max-width:1180px;margin:0 auto;padding:30px 22px 60px;display:flex;gap:46px;
+    justify-content:center;align-items:flex-start;flex-wrap:wrap;}
+  .device{display:flex;flex-direction:column;align-items:center;gap:14px;}
+  .device .cap{display:flex;align-items:center;gap:9px;font-weight:800;font-size:15px;}
+  .device .cap .d{width:11px;height:11px;border-radius:4px;}
+  .device.parent .cap .d{background:var(--primary);}
+  .device.teacher .cap .d{background:var(--accent);}
+  .device .cap small{color:var(--muted);font-weight:600;font-size:12.5px;}
+
+  .phone{width:322px;height:680px;border-radius:50px;padding:13px;
+    background:linear-gradient(155deg,#38434f 0%,#222c35 42%,#10161c 100%);
+    box-shadow:var(--shadow-lift), inset 0 1px 1px rgba(255,255,255,.14);position:relative;}
+  .phone::after{content:"";position:absolute;left:50%;bottom:-30px;transform:translateX(-50%);
+    width:76%;height:38px;border-radius:50%;background:rgba(31,45,58,.28);filter:blur(14px);z-index:-1;}
+  .phone .notch{position:absolute;top:13px;left:50%;transform:translateX(-50%);
+    width:130px;height:28px;background:#141b22;border-radius:0 0 18px 18px;z-index:6;}
+  .screen{width:100%;height:100%;border-radius:38px;overflow:hidden;background:#f6f8fa;
+    position:relative;display:flex;flex-direction:column;}
+  .scr-scroll{flex:1;overflow-y:auto;overflow-x:hidden;background:#f4f6f7;
+    border-radius:24px 24px 0 0;margin-top:-18px;position:relative;
+    box-shadow:0 -8px 18px -10px rgba(0,0,0,.14);}
+  .scr-scroll::-webkit-scrollbar{width:0;}
+  .scr-scroll::before{content:"";position:absolute;top:8px;left:50%;transform:translateX(-50%);
+    width:38px;height:4px;border-radius:999px;background:rgba(31,45,58,.14);}
+
+  .statusbar{height:42px;display:flex;align-items:flex-end;justify-content:space-between;
+    padding:0 24px 6px;font-size:12px;font-weight:700;flex:0 0 auto;}
+
+  .appbar{padding:10px 20px 28px;flex:0 0 auto;color:#fff;position:relative;}
+  .appbar.p{background:linear-gradient(155deg,#37b0a0 0%,var(--primary) 45%,var(--primary-deep) 100%);}
+  .appbar.t{background:linear-gradient(155deg,#f9b56c 0%,#f7a95a 45%,var(--accent) 100%);}
+  .appbar .cls{font-size:12px;opacity:.9;font-weight:600;display:inline-flex;align-items:center;gap:6px;
+    background:rgba(255,255,255,.18);padding:4px 11px;border-radius:999px;backdrop-filter:blur(4px);}
+  .appbar .h{font-family:var(--font-display);font-size:24px;font-weight:900;margin-top:9px;letter-spacing:-.01em;}
+  .appbar .logout{position:absolute;top:12px;right:16px;background:rgba(255,255,255,.22);border:0;
+    color:#fff;font-family:inherit;font-size:11.5px;font-weight:700;padding:5px 11px;border-radius:999px;cursor:pointer;}
+
+  .body{padding:20px 15px 22px;display:flex;flex-direction:column;gap:13px;}
+  .page-anim{animation:fadeUp .34s ease;}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;}}
+
+  .card{background:var(--card);border-radius:20px;padding:14px;border:1px solid var(--line);
+    box-shadow:var(--shadow-card);}
+  .lab{font-size:13px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:7px;margin-bottom:10px;letter-spacing:-.01em;}
+  .hero-card{background:linear-gradient(150deg,#ffffff,#eaf6f3);border:1px solid rgba(47,158,143,.24);
+    box-shadow:0 2px 4px rgba(31,45,58,.05),0 20px 34px -22px rgba(47,158,143,.55);}
+  .progress{height:9px;border-radius:999px;background:#e6edee;overflow:hidden;margin-top:8px;}
+  .progress span{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,var(--primary),#57c6b5);transition:width 1s cubic-bezier(.2,.7,.2,1);}
+  .chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:9px;}
+  .chipx{font-size:12.5px;font-weight:700;padding:7px 12px;border-radius:999px;background:var(--accent-soft);color:#c26a1f;display:inline-flex;align-items:center;gap:5px;}
+  .strike{color:var(--muted);text-decoration:line-through;}
+  .feature{border-radius:22px;padding:18px;display:flex;align-items:center;gap:15px;color:#fff;
+    box-shadow:0 2px 4px rgba(31,45,58,.06),0 22px 36px -24px rgba(31,45,58,.7);}
+  .feature.p{background:linear-gradient(145deg,#34ac9c 0%,#1f7367 100%);}
+  .feature.t{background:linear-gradient(145deg,#f8ad61 0%,#e07f2f 100%);}
+  .feature .ft{flex:1;min-width:0;}
+  .feature .kicker{font-size:10.5px;font-weight:800;letter-spacing:.16em;opacity:.82;}
+  .feature .ft-h{font-family:var(--font-display);font-size:21px;font-weight:900;margin-top:4px;line-height:1.18;}
+  .feature .ft-sub{font-size:12px;opacity:.88;margin-top:6px;}
+  .ringwrap{flex:0 0 auto;}
+  .score-hero{border-radius:22px;padding:18px;color:#fff;background:linear-gradient(145deg,#f8ad61 0%,#e07f2f 100%);
+    box-shadow:0 2px 4px rgba(31,45,58,.06),0 22px 36px -24px rgba(224,127,47,.75);}
+  .score-hero .kicker{font-size:10.5px;font-weight:800;letter-spacing:.14em;opacity:.85;}
+  .score-hero .n{font-family:var(--font-display);font-size:60px;font-weight:900;line-height:1;}
+  .score-hero .u{opacity:.9;font-size:13px;}
+  .score-hero .rp{display:inline-flex;font-size:12px;font-weight:800;background:rgba(255,255,255,.22);padding:5px 12px;border-radius:999px;margin-top:10px;}
+
+  .row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px dashed var(--line);}
+  .row:last-child{border-bottom:0;}
+  .row .t{font-size:14px;font-weight:600;flex:1;}
+  .row .t small{display:block;font-weight:400;color:var(--muted);font-size:11.5px;}
+  .pill{font-size:11px;font-weight:700;padding:4px 9px;border-radius:999px;white-space:nowrap;}
+  .pill.p{background:var(--primary-soft);color:var(--primary-deep);}
+  .pill.a{background:var(--accent-soft);color:#c26a1f;}
+  .pill.b{background:var(--blue-soft);color:#316193;}
+  .pill.g{background:#eef2f4;color:var(--muted);}
+
+  .check{width:24px;height:24px;border-radius:8px;border:2px solid var(--primary);flex:0 0 auto;
+    display:flex;align-items:center;justify-content:center;cursor:pointer;background:#fff;transition:.2s;}
+  .check svg{width:14px;height:14px;stroke:#fff;stroke-width:3.4;fill:none;
+    stroke-dasharray:22;stroke-dashoffset:22;transition:stroke-dashoffset .3s .05s;}
+  .check.on{background:var(--primary);} .check.on svg{stroke-dashoffset:0;}
+
+  .empty{text-align:center;color:var(--muted);font-size:13px;padding:26px 10px;}
+  .empty .big{font-size:30px;display:block;margin-bottom:6px;}
+
+  .grade-row{display:flex;align-items:center;gap:8px;margin-top:9px;}
+  .grade-row .name{font-size:12.5px;font-weight:600;width:54px;}
+  .bar{flex:1;height:9px;border-radius:999px;background:#eef2f4;overflow:hidden;}
+  .bar span{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,var(--primary),#4fc0af);
+    transition:width .9s cubic-bezier(.2,.7,.2,1);}
+  .bar span.mine{background:linear-gradient(90deg,var(--accent),#f7b877);}
+  .grade-row .v{font-size:12px;font-weight:800;width:36px;text-align:right;}
+
+  .photo-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;}
+  .ph{height:76px;border-radius:12px;position:relative;overflow:hidden;display:flex;align-items:flex-end;
+    padding:7px;color:#fff;font-size:10.5px;font-weight:700;}
+  .ph.g1{background:linear-gradient(135deg,#7ec8bd,#3a9e90);}
+  .ph.g2{background:linear-gradient(135deg,#f7b877,#ef8f4a);}
+  .ph.g3{background:linear-gradient(135deg,#8fb8e0,#5a8fc4);}
+  .ph.g4{background:linear-gradient(135deg,#e79aa3,#e06b78);}
+  .ph::after{content:"";position:absolute;inset:0;background:linear-gradient(transparent 45%,rgba(0,0,0,.3));}
+  .ph span{position:relative;z-index:2;}
+  .ph .x{position:absolute;top:5px;right:5px;z-index:3;width:20px;height:20px;border-radius:50%;
+    background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;font-size:12px;cursor:pointer;}
+
+  .note-item{display:flex;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);align-items:flex-start;}
+  .note-item:last-child{border-bottom:0;}
+  .ava{width:34px;height:34px;border-radius:11px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;font-size:16px;background:var(--primary-soft);}
+  .note-item .c{flex:1;} .note-item .c .n{font-size:13.5px;font-weight:700;}
+  .note-item .c .d{font-size:12.5px;color:var(--ink-soft);margin-top:2px;}
+  .note-item .c .time{font-size:10.5px;color:var(--muted);margin-top:3px;}
+
+  .announce{background:linear-gradient(150deg,#fff,#fef6ef);border:1px solid rgba(242,153,74,.22);}
+  .announce.imp{border-color:rgba(239,111,123,.4);}
+  .announce .top{display:flex;align-items:center;gap:8px;}
+  .announce .top .tag{font-size:10.5px;font-weight:800;padding:3px 8px;border-radius:6px;background:var(--pink-soft);color:#c33f4c;}
+  .announce .msg{font-size:13px;color:var(--ink-soft);margin-top:8px;}
+  .announce .time{font-size:10.5px;color:var(--muted);margin-top:8px;}
+
+  /* tab bar */
+  .tabbar{flex:0 0 auto;min-height:64px;background:#fff;border-top:1px solid var(--line);
+    display:flex;align-items:center;justify-content:space-around;padding:0 4px 8px;}
+  .tab{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10px;color:var(--muted);
+    font-weight:700;cursor:pointer;padding:4px 6px;border-radius:12px;transition:.2s;flex:1;}
+  .tab .ic{font-size:19px;filter:grayscale(1);opacity:.55;transition:.2s;}
+  .tab.act{color:var(--primary);background:var(--primary-soft);} .tab.act .ic{filter:none;opacity:1;transform:translateY(-1px);}
+  .tab.t.act{color:var(--accent);background:var(--accent-soft);}
+
+  /* login */
+  .login{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;
+    padding:28px;text-align:center;background:linear-gradient(170deg,#eef8f6,#fff 60%);}
+  .logo-badge{width:76px;height:76px;border-radius:22px;background:linear-gradient(150deg,var(--primary),var(--primary-deep));
+    display:flex;align-items:center;justify-content:center;font-size:34px;box-shadow:0 14px 26px -12px rgba(47,158,143,.7);}
+  .login h3{font-family:var(--font-display);font-size:23px;font-weight:900;}
+  .login .sub{font-size:13px;color:var(--muted);margin-top:-8px;}
+  .field{width:100%;text-align:left;}
+  .field label{font-size:11.5px;font-weight:700;color:var(--ink-soft);margin-left:4px;}
+
+  .in{width:100%;height:44px;border-radius:13px;border:1.5px solid var(--line);background:#fff;
+    padding:0 14px;font-size:14px;font-family:inherit;color:var(--ink);margin-top:5px;outline:none;transition:.2s;}
+  .in:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(47,158,143,.14);}
+  .ta{width:100%;min-height:66px;border-radius:13px;border:1.5px solid var(--line);background:#fff;
+    padding:11px 13px;font-size:13.5px;font-family:inherit;color:var(--ink);margin-top:8px;outline:none;resize:none;transition:.2s;}
+  .ta:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(47,158,143,.14);}
+  select.in{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' stroke='%238a97a3' stroke-width='2'%3E%3Cpath d='M2 4l4 4 4-4'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;}
+
+  .btn{width:100%;height:46px;border-radius:14px;border:0;cursor:pointer;font-family:inherit;font-size:15px;
+    font-weight:800;color:#fff;background:linear-gradient(120deg,var(--primary),var(--primary-deep));
+    box-shadow:0 12px 22px -12px rgba(47,158,143,.8);transition:transform .18s;}
+  .btn:hover{transform:translateY(-2px);}
+  .btn:active{transform:translateY(0);}
+  .btn.amber{background:linear-gradient(120deg,#f7a95a,var(--accent));box-shadow:0 12px 22px -12px rgba(242,153,74,.8);}
+
+  .addrow{display:flex;gap:8px;margin-top:9px;}
+  .addrow .in{margin-top:0;height:40px;}
+  .addbtn{width:44px;height:40px;flex:0 0 auto;border:0;border-radius:12px;cursor:pointer;
+    background:var(--accent-soft);color:#c26a1f;font-size:20px;font-weight:800;font-family:inherit;transition:.2s;}
+  .addbtn:hover{background:var(--accent);color:#fff;}
+  .addbtn.p{background:var(--primary-soft);color:var(--primary-deep);}
+  .addbtn.p:hover{background:var(--primary);color:#fff;}
+
+  .del{width:24px;height:24px;flex:0 0 auto;border-radius:8px;border:0;cursor:pointer;background:#f4f6f8;
+    color:var(--muted);font-size:14px;line-height:1;transition:.2s;}
+  .del:hover{background:var(--pink-soft);color:var(--pink);}
+
+  .edit-row{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line);}
+  .edit-row:last-child{border-bottom:0;}
+  .edit-row .t{flex:1;font-size:13.5px;font-weight:600;}
+  .edit-row .t small{display:block;font-weight:400;color:var(--muted);font-size:11px;}
+
+  .toggle-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 0;border-bottom:1px solid var(--line);}
+  .toggle-row:last-child{border-bottom:0;}
+  .toggle-row .tx{font-size:13.5px;font-weight:600;}
+  .toggle-row .tx small{display:block;color:var(--muted);font-weight:400;font-size:11px;margin-top:1px;}
+  .sw2{position:relative;display:inline-block;width:46px;height:26px;cursor:pointer;flex:0 0 auto;}
+  .sw2 input{opacity:0;width:0;height:0;position:absolute;}
+  .sw2-tr{position:absolute;inset:0;border-radius:999px;background:#dfe5ea;transition:.3s;}
+  .sw2-tr::after{content:"";position:absolute;top:2.5px;left:2.5px;width:21px;height:21px;border-radius:50%;
+    background:#fff;box-shadow:0 2px 4px rgba(0,0,0,.2);transition:.3s;}
+  .sw2 input:checked + .sw2-tr{background:var(--accent);}
+  .sw2 input:checked + .sw2-tr::after{left:22.5px;}
+  .sw2.green input:checked + .sw2-tr{background:var(--primary);}
+
+  .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .stat{background:#fff;border:1px solid var(--line);border-radius:15px;padding:12px;}
+  .stat{transition:.2s;} .stat:hover{border-color:var(--accent);transform:translateY(-2px);}
+  .stat .num{font-family:var(--font-display);font-size:28px;font-weight:900;line-height:1;} .stat .num small{font-family:"Noto Sans TC";font-size:12px;color:var(--muted);font-weight:600;}
+  .stat .k{font-size:11.5px;color:var(--muted);font-weight:700;margin-top:2px;}
+  .quick{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .q{background:#fff;border:1px solid var(--line);border-radius:15px;padding:13px 12px;display:flex;flex-direction:column;gap:6px;cursor:pointer;transition:.2s;}
+  .q:hover{border-color:var(--accent);transform:translateY(-2px);}
+  .q .qi{width:34px;height:34px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:17px;}
+  .q .qt{font-size:13px;font-weight:800;} .q .qs{font-size:11px;color:var(--muted);}
+
+  .info{display:flex;gap:7px;font-size:11.5px;font-weight:700;padding:9px 11px;border-radius:11px;line-height:1.5;}
+  .info.p{background:var(--primary-soft);color:var(--primary-deep);}
+  .info.a{background:var(--accent-soft);color:#c26a1f;}
+
+  .score-big{display:flex;align-items:baseline;gap:8px;margin-top:6px;}
+  .score-big .n{font-family:var(--font-display);font-size:52px;font-weight:900;color:var(--accent);line-height:1;}
+  .score-big .u{font-size:13px;color:var(--muted);}
+  .rank-pill{display:inline-flex;align-items:center;gap:5px;margin-top:10px;font-size:12px;font-weight:800;
+    color:#c26a1f;background:var(--accent-soft);padding:6px 12px;border-radius:999px;}
+
+  /* toast */
+  .toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(20px);z-index:80;
+    background:rgba(33,42,51,.94);color:#fff;padding:12px 20px;border-radius:999px;font-size:13.5px;font-weight:700;
+    box-shadow:0 18px 40px -16px rgba(0,0,0,.6);opacity:0;transition:.35s;pointer-events:none;display:flex;align-items:center;gap:8px;}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+  @media(max-width:760px){ .topbar .note{display:none;} }
+
+  /* ============ vision 功能元件 ============ */
+  /* 首頁快速操作 */
+  .qa-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;}
+  .qa{background:#fff;border:1px solid var(--line);border-radius:16px;padding:13px 8px;display:flex;flex-direction:column;align-items:center;gap:7px;cursor:pointer;transition:transform .18s,border-color .18s,box-shadow .18s;box-shadow:var(--shadow-card);}
+  .qa:hover{transform:translateY(-3px);border-color:var(--primary);box-shadow:0 10px 20px -12px rgba(0,0,0,.22);}
+  .qa:active{transform:scale(.96);}
+  .qa .qa-i{width:42px;height:42px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:21px;background:var(--primary-soft);}
+  .qa .qa-t{font-size:12px;font-weight:800;color:var(--ink);}
+  .qa.amber .qa-i{background:var(--accent-soft);} .qa.blue .qa-i{background:var(--blue-soft);} .qa.pink .qa-i{background:var(--pink-soft);}
+
+  /* 成長時間軸 */
+  .timeline{position:relative;padding-left:26px;margin-top:6px;}
+  .timeline::before{content:"";position:absolute;left:9px;top:6px;bottom:6px;width:2px;background:linear-gradient(var(--primary),var(--accent));opacity:.35;border-radius:2px;}
+  .tl-item{position:relative;padding:0 0 15px;}
+  .tl-item:last-child{padding-bottom:2px;}
+  .tl-item::before{content:"";position:absolute;left:-21px;top:20px;width:12px;height:12px;border-radius:50%;background:#fff;border:3px solid var(--primary);box-shadow:0 0 0 3px #fff;}
+  .tl-item.a::before{border-color:var(--accent);} .tl-item.k::before{border-color:var(--pink);}
+  .tl-date{font-size:11px;font-weight:800;color:var(--muted);}
+  .tl-card{background:#fff;border:1px solid var(--line);border-radius:15px;padding:11px 13px;box-shadow:var(--shadow-card);margin-top:4px;}
+  .tl-card .n{font-size:13.5px;font-weight:800;display:flex;align-items:center;gap:7px;}
+  .tl-card .d{font-size:12.5px;color:var(--ink-soft);margin-top:3px;line-height:1.5;}
+  .page-anim .tl-item{animation:fadeUp .5s both;}
+  .page-anim .tl-item:nth-child(1){animation-delay:.04s}.page-anim .tl-item:nth-child(2){animation-delay:.1s}
+  .page-anim .tl-item:nth-child(3){animation-delay:.16s}.page-anim .tl-item:nth-child(4){animation-delay:.22s}
+  .page-anim .tl-item:nth-child(5){animation-delay:.28s}.page-anim .tl-item:nth-child(6){animation-delay:.34s}
+  .page-anim .tl-item:nth-child(7){animation-delay:.4s}.page-anim .tl-item:nth-child(8){animation-delay:.46s}
+
+  /* 成長紀念冊封面 */
+  .book{border-radius:20px;padding:22px 18px;color:#fff;background:linear-gradient(150deg,#2f9e8f 0%,#38a89d 45%,#f2994a 130%);position:relative;overflow:hidden;box-shadow:var(--shadow-feature);}
+  .book::after{content:"📖";position:absolute;right:-8px;bottom:-14px;font-size:88px;opacity:.16;transform:rotate(-8deg);}
+  .book .k{font-size:11px;font-weight:800;letter-spacing:.14em;opacity:.92;}
+  .book .h{font-family:var(--font-display);font-size:22px;font-weight:900;margin-top:6px;line-height:1.2;}
+  .book .s{font-size:12.5px;opacity:.94;margin-top:7px;max-width:76%;line-height:1.5;position:relative;z-index:1;}
+  .book .b{margin-top:15px;display:inline-flex;background:#fff;color:var(--primary-deep);font-weight:800;font-size:13px;padding:9px 16px;border-radius:999px;cursor:pointer;position:relative;z-index:1;transition:transform .18s;}
+  .book .b:hover{transform:translateX(3px);}
+
+  /* 行事曆 */
+  .cal-item{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--line);}
+  .cal-item:last-child{border-bottom:0;}
+  .cal-date{flex:0 0 auto;width:46px;text-align:center;}
+  .cal-date .dd{font-family:var(--font-display);font-size:20px;font-weight:900;line-height:1;color:var(--ink);}
+  .cal-date .mm{font-size:10px;color:var(--muted);font-weight:800;margin-top:2px;}
+  .cal-body{flex:1;min-width:0;} .cal-body .t{font-size:13.5px;font-weight:700;}
+  .cal-type{font-size:10.5px;font-weight:800;padding:4px 10px;border-radius:999px;white-space:nowrap;}
+  .cal-type.exam{background:var(--pink-soft);color:#c33f4c;} .cal-type.activity{background:var(--primary-soft);color:var(--primary-deep);}
+  .cal-type.fee{background:var(--accent-soft);color:#c26a1f;} .cal-type.holiday{background:var(--blue-soft);color:#316193;}
+
+  /* 私訊對話 */
+  .chat-note{font-size:11.5px;text-align:center;color:var(--muted);background:#eef2f4;padding:8px 12px;border-radius:12px;margin-bottom:2px;}
+  .chat-wrap{display:flex;flex-direction:column;gap:9px;padding:4px 0;}
+  .msg-b{max-width:80%;padding:10px 13px;border-radius:16px;font-size:13px;line-height:1.5;box-shadow:var(--shadow-card);animation:pop .28s both;}
+  .msg-b .tm{display:block;font-size:10px;opacity:.72;margin-top:4px;}
+  .msg-b.in{background:#fff;align-self:flex-start;border-bottom-left-radius:5px;}
+  .msg-b.out{background:var(--primary);color:#fff;align-self:flex-end;border-bottom-right-radius:5px;}
+  .msg-b.out.t{background:var(--accent);}
+  @keyframes pop{from{opacity:0;transform:translateY(7px) scale(.97);}to{opacity:1;transform:none;}}
+  .send{display:flex;gap:8px;margin-top:2px;}
+  .send .in{margin-top:0;height:44px;}
+  .sendbtn{flex:0 0 auto;width:48px;height:44px;border:0;border-radius:13px;background:var(--primary);color:#fff;font-size:17px;cursor:pointer;transition:transform .15s,filter .15s;}
+  .sendbtn:hover{filter:brightness(1.05);} .sendbtn:active{transform:scale(.92);} .sendbtn.t{background:var(--accent);}
+
+  /* 老師待辦 alert */
+  .alert{display:flex;align-items:center;gap:11px;padding:12px;border-radius:15px;border:1px solid var(--line);background:#fff;box-shadow:var(--shadow-card);}
+  .alert .ai{width:38px;height:38px;border-radius:11px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;font-size:18px;}
+  .alert .at{flex:1;min-width:0;font-size:13.5px;font-weight:800;} .alert .at small{display:block;font-weight:500;color:var(--muted);font-size:11.5px;margin-top:2px;}
+  .alert .go{font-size:12px;font-weight:800;color:#c26a1f;background:var(--accent-soft);padding:7px 13px;border-radius:999px;cursor:pointer;white-space:nowrap;transition:.18s;}
+  .alert .go:hover{background:var(--accent);color:#fff;}
+
+  /* 名單狀態（同意書） */
+  .rl{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);}
+  .rl:last-child{border-bottom:0;}
+  .rl .seat{width:26px;height:26px;border-radius:8px;background:#eef2f4;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex:0 0 auto;}
+  .rl .nm{flex:1;font-size:13px;font-weight:600;}
+  .st{font-size:11px;font-weight:800;padding:4px 10px;border-radius:999px;}
+  .st.ok{background:var(--primary-soft);color:var(--primary-deep);} .st.no{background:var(--pink-soft);color:#c33f4c;}
+
+  /* 範本 chips + 已讀 + ghost 按鈕 */
+  .tmpls{display:flex;flex-wrap:wrap;gap:7px;margin-top:8px;}
+  .tmpl{font-size:12px;font-weight:700;padding:7px 12px;border-radius:999px;background:var(--accent-soft);color:#c26a1f;cursor:pointer;border:1px dashed rgba(242,153,74,.5);transition:.18s;}
+  .tmpl:hover{background:var(--accent);color:#fff;border-color:transparent;}
+  .read-tag{font-size:11px;font-weight:800;color:var(--primary-deep);}
+  .read-btn{font-size:12px;font-weight:800;color:var(--primary-deep);background:var(--primary-soft);border:0;padding:7px 14px;border-radius:999px;cursor:pointer;font-family:inherit;transition:.18s;}
+  .read-btn:hover{filter:brightness(.97);}
+  .ghost-btn{width:100%;height:44px;border-radius:13px;border:1.5px dashed var(--line);background:#fff;font-family:inherit;font-size:13.5px;font-weight:800;color:var(--ink-soft);cursor:pointer;transition:.18s;}
+  .ghost-btn:hover{border-color:var(--accent);color:#c26a1f;background:#fffaf3;}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="in">
+    <div class="brand"><span class="logo">🎒</span><span>班級<span class="grad">連</span></span></div>
+    <span class="note">互動 Demo · 資料存在你的瀏覽器（非真實資料庫），可自由試玩</span>
+    <span class="sp"></span>
+    <button class="rbtn" data-act="reset">↻ 重設 Demo 資料</button>
+  </div>
+</div>
+
+<div class="intro">
+  <h1>一年甲班 · <span class="em">親師連絡</span>平台</h1>
+  <p>左邊是家長看到的畫面，右邊是老師的後台。<b>在老師端新增或發布內容，左邊家長端會即時更新</b>；老師沒發布的欄位，家長端不會出現。全部都可以點點看。</p>
+  <div class="flow">
+    <span class="tag t"><i></i>老師端發布</span>
+    <span class="arrow">➜</span>
+    <span class="tag p"><i></i>家長端即時看到</span>
+  </div>
+</div>
+
+<div class="stage">
+  <div class="device parent">
+    <div class="cap"><span class="d"></span>家長端 <small>· 前台（用孩子座號登入）</small></div>
+    <div class="phone"><div class="notch"></div>
+      <div class="screen" id="parentScreen"></div>
+    </div>
+  </div>
+
+  <div class="device teacher">
+    <div class="cap"><span class="d"></span>老師端 <small>· 後台（發布 / 管理）</small></div>
+    <div class="phone"><div class="notch"></div>
+      <div class="screen" id="teacherScreen"></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================ 資料層（mock，存 localStorage） ============================ */
+const KEY='banjilian_demo_v4';
+const DEFAULT={
+  className:'一年甲班', date:'7/9（三）', classSize:28,
+  student:{seat:'07', name:'小宇'},
+  announcements:[
+    {id:1,title:'校外教學同意書',body:'請於 7/11（五）前繳回同意書與費用 350 元，謝謝配合。',important:true,time:'今天 08:10',read:false,others:16},
+    {id:2,title:'下週課表微調',body:'週三體育課與美勞課對調，請留意攜帶物品。',important:false,time:'昨天 16:40',read:true,others:23},
+  ],
+  homework:[
+    {id:1,text:'數學習作 P.12–13',note:'圈圈看，家長簽名',done:false},
+    {id:2,text:'國語生字 甲本一頁',note:'',done:true},
+    {id:3,text:'朗讀課文並簽名',note:'',done:false},
+  ],
+  bring:[
+    {id:1,text:'直笛',note:'音樂課',done:false},
+    {id:2,text:'水彩用具',note:'美勞課',done:false},
+  ],
+  notes:[
+    {id:1,emoji:'🌟',title:'主動幫助同學',desc:'今天主動教旁邊同學綁鞋帶，很有愛心！',time:'今天 10:20'},
+    {id:2,emoji:'🍚',title:'午餐光碟',desc:'青菜也吃光光，進步很多 👏',time:'今天 12:40'},
+  ],
+  photos:[
+    {id:1,label:'晨間閱讀',g:'g1'},
+    {id:2,label:'午餐光碟',g:'g2'},
+  ],
+  grades:{ published:true, showDist:true, exam:'數學小考' },
+  roster:[
+    {seat:'01',name:'小恩',score:100},
+    {seat:'02',name:'小柔',score:88},
+    {seat:'03',name:'小杰',score:76},
+    {seat:'04',name:'小凱',score:95},
+    {seat:'05',name:'小婷',score:82},
+    {seat:'06',name:'小庭',score:91},
+    {seat:'07',name:'小宇',score:92},
+    {seat:'08',name:'小晴',score:85},
+    {seat:'09',name:'小安',score:68},
+    {seat:'10',name:'小妍',score:79},
+    {seat:'11',name:'小豪',score:84},
+    {seat:'12',name:'小蓁',score:93},
+  ],
+  milestones:[
+    {id:1,emoji:'🎀',title:'第一次自己綁鞋帶',desc:'練了好幾天，今天終於成功，超有成就感！',time:'7/8（二）'},
+    {id:2,emoji:'📖',title:'讀完第一本橋樑書',desc:'《小狐狸的字條》整本自己念完。',time:'7/4（五）'},
+  ],
+  events:[
+    {id:1,date:'7/11（五）',title:'校外教學費用 350 元截止',type:'fee'},
+    {id:2,date:'7/15（二）',title:'數學第二次評量',type:'exam'},
+    {id:3,date:'7/18（五）',title:'班級同樂會',type:'activity'},
+    {id:4,date:'7/21（一）',title:'暑假開始',type:'holiday'},
+  ],
+  leaves:[
+    {id:1,seat:'05',name:'小婷',date:'7/10（四）',type:'病假',reason:'發燒 38.5 度，已就醫需在家休息一天。',status:'pending'},
+  ],
+  consent:{ title:'校外教學同意書', deadline:'7/11（五）',
+    signed:{'01':true,'02':true,'03':true,'04':true,'06':true,'08':true,'10':true,'11':true,'12':true} },
+  messages:{ officeHours:'平日 17:00–20:00',
+    list:[
+      {id:1,from:'teacher',text:'小宇今天主動幫同學綁鞋帶，很有愛心，跟您分享 :)',time:'昨天 16:20'},
+      {id:2,from:'parent',text:'謝謝老師！回家我也會鼓勵他～',time:'昨天 20:05'},
+    ] },
+};
+const clone=o=>JSON.parse(JSON.stringify(o));
+function load(){ try{const s=localStorage.getItem(KEY); if(s) return Object.assign(clone(DEFAULT),JSON.parse(s));}catch(e){} return clone(DEFAULT); }
+function save(){ localStorage.setItem(KEY,JSON.stringify(store)); }
+let store=load();
+
+const ui={ parent:{loggedIn:false,tab:'首頁',view:null}, teacher:{tab:'總覽',view:null},
+  scratch:{annTitle:'',annBody:'',hwInput:'',bringInput:'',noteTitle:'',noteDesc:'',photoLabel:'',leaveReason:'',msgP:'',msgT:''} };
+
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const nid=arr=>arr.reduce((m,x)=>Math.max(m,x.id),0)+1;
+const statusbar='<div class="statusbar"><span>9:41</span><span>📶 🔋</span></div>';
+function ring(pct,fg,track){
+  const r=25, c=2*Math.PI*r, off=c*(1-Math.max(0,Math.min(100,pct))/100);
+  return `<span class="ringwrap"><svg viewBox="0 0 62 62" width="62" height="62">
+    <circle cx="31" cy="31" r="${r}" fill="none" stroke="${track}" stroke-width="7"/>
+    <circle cx="31" cy="31" r="${r}" fill="none" stroke="${fg}" stroke-width="7" stroke-linecap="round"
+      stroke-dasharray="${c.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}" transform="rotate(-90 31 31)"/>
+    <text x="31" y="36" text-anchor="middle" font-size="15" font-weight="900" fill="${fg}">${pct}%</text></svg></span>`;
+}
+
+/* ============================ 家長端 ============================ */
+function parentTabs(){
+  const t=[{k:'首頁',ic:'🏠'},{k:'聯絡簿',ic:'📒'},{k:'公告',ic:'📣'}];
+  if(store.notes.length||store.photos.length||store.milestones.length) t.push({k:'成長',ic:'🌱'});
+  if(store.grades.published) t.push({k:'成績',ic:'📊'});
+  return t;
+}
+const PVIEWS={
+  calendar:{h:'班級行事曆',fn:()=>pCalendar()},
+  leave:{h:'請假 / 回報',fn:()=>pLeave()},
+  chat:{h:'聯絡老師',fn:()=>pChat()},
+  book:{h:'成長紀念冊',fn:()=>pBook()},
+};
+const BUCKETS=[{range:'90–100',lo:90,hi:100},{range:'80–89',lo:80,hi:89},{range:'70–79',lo:70,hi:79},{range:'60–69',lo:60,hi:69},{range:'59 以下',lo:0,hi:59}];
+function scoreList(){ return store.roster.map(s=>s.score).filter(v=>v!=null && !isNaN(v)); }
+function computeDist(){ const sc=scoreList(); return BUCKETS.map(b=>({...b,count:sc.filter(v=>v>=b.lo&&v<=b.hi).length})); }
+function myChild(){ return store.roster.find(s=>s.seat===store.student.seat); }
+
+function renderParent(){
+  const el=document.getElementById('parentScreen');
+  const prev=el.querySelector('.scr-scroll'); const ps=prev?prev.scrollTop:0;
+  if(!ui.parent.loggedIn){ ui.parent._last='login'; el.innerHTML=statusbar+parentLogin(); return; }
+  const tabs=parentTabs();
+  if(!tabs.find(t=>t.k===ui.parent.tab)) ui.parent.tab='首頁';
+  const tab=ui.parent.tab;
+  const view=ui.parent.view;
+  let content,head,key;
+  if(view && PVIEWS[view]){ content=PVIEWS[view].fn(); head=PVIEWS[view].h; key='v:'+view; }
+  else{
+    key=tab;
+    const heads={'首頁':`今天 ${store.date}`,'聯絡簿':`聯絡簿 · ${store.date}`,'公告':'班級公告','成長':`${store.student.name}的成長`,'成績':store.grades.exam};
+    head=heads[tab];
+    if(tab==='首頁') content=pHome();
+    else if(tab==='聯絡簿') content=pContact();
+    else if(tab==='公告') content=pAnn();
+    else if(tab==='成長') content=pGrowth();
+    else if(tab==='成績') content=pGrade();
+  }
+  const changed=ui.parent._last!==key; ui.parent._last=key;
+  const bar=tabs.map(t=>`<div class="tab ${(!view&&t.k===tab)?'act':''}" data-act="ptab" data-k="${t.k}"><span class="ic">${t.ic}</span>${t.k}</div>`).join('');
+  const btn=view?`<button class="logout" data-act="pback">‹ 返回</button>`:`<button class="logout" data-act="logout">登出</button>`;
+  el.innerHTML=statusbar+
+    `<div class="appbar p">${btn}
+       <div class="cls">🏫 ${esc(store.className)} · ${esc(store.student.name)}的清單</div>
+       <div class="h">${esc(head)}</div></div>`+
+    `<div class="scr-scroll"><div class="${changed?'page-anim':''}">${content}</div></div>`+
+    `<div class="tabbar">${bar}</div>`;
+  if(!changed){ const s=el.querySelector('.scr-scroll'); if(s) s.scrollTop=ps; }
+}
+
+function parentLogin(){
+  return `<div class="login">
+    <div class="logo-badge">🎒</div>
+    <div><h3>歡迎回來</h3><div class="sub">用孩子的座號或姓名登入</div></div>
+    <div class="field"><label>座號 / 姓名</label>
+      <input class="in" value="${store.student.seat} · ${esc(store.student.name)}"></div>
+    <div class="field"><label>登入密碼</label>
+      <input class="in" type="password" placeholder="請輸入密碼（Demo 可留空）"></div>
+    <button class="btn" data-act="login">進入我孩子的專屬清單</button>
+    <div style="font-size:11.5px;color:var(--muted)">一個帳號只會看到自己孩子的資料 🔐</div>
+  </div>`;
+}
+
+function pHome(){
+  const hw=store.homework, br=store.bring;
+  const done=hw.filter(h=>h.done).length;
+  const remain=hw.length-done;
+  const pct=hw.length?Math.round(done/hw.length*100):100;
+  const feature=`<div class="feature p">${ring(pct,'#ffffff','rgba(255,255,255,.28)')}
+    <div class="ft"><div class="kicker">今日作業</div>
+      <div class="ft-h">${hw.length===0?'今天沒有作業 🎉':(remain===0?'全部完成！👏':'還有 '+remain+' 項要完成')}</div>
+      <div class="ft-sub">${hw.length?done+'/'+hw.length+' 已完成 · 到聯絡簿打勾':'好好休息一下'}</div></div></div>`;
+  const hwCard=hw.length?`<div class="card"><div class="lab">✍️ 今日作業</div>${hw.map(h=>`
+    <div class="row" style="padding:8px 0"><span class="t ${h.done?'strike':''}" style="flex:1">${esc(h.text)}</span>
+      <span class="pill ${h.done?'p':'g'}">${h.done?'✓ 完成':'待完成'}</span></div>`).join('')}</div>`:'';
+  const brCard=br.length?`<div class="card"><div class="lab">🎒 明天要帶</div><div class="chips">${br.map(b=>`<span class="chipx">${esc(b.text)}</span>`).join('')}</div></div>`:'';
+  const qa=`<div class="qa-grid">
+    <div class="qa" data-act="pview" data-k="calendar"><div class="qa-i">📅</div><div class="qa-t">行事曆</div></div>
+    <div class="qa amber" data-act="pview" data-k="leave"><div class="qa-i">🤒</div><div class="qa-t">請假</div></div>
+    <div class="qa blue" data-act="pview" data-k="chat"><div class="qa-i">💬</div><div class="qa-t">聯絡老師</div></div>
+  </div>`;
+  const top=feature+qa+hwCard+brCard;
+
+  let consentCard='';
+  if(store.consent && !store.consent.signed[store.student.seat]){
+    consentCard=`<div class="card announce imp"><div class="top"><span class="tag">待簽</span><b style="font-size:13.5px">${esc(store.consent.title)}</b></div>
+      <div class="msg">${esc(store.consent.deadline)} 前需線上簽署，免印免帶回。</div>
+      <button class="read-btn" data-act="sign-consent" style="margin-top:10px;background:var(--accent-soft);color:#c26a1f">✍️ 立即線上簽署</button></div>`;
+  }
+
+  let latest='';
+  if(store.announcements.length){
+    const a=store.announcements[0];
+    latest=`<div class="card announce ${a.important?'imp':''}"><div class="top">${a.important?'<span class="tag">重要</span>':'<span class="pill b">公告</span>'}<b style="font-size:13.5px">${esc(a.title)}</b>${a.read?'<span class="read-tag" style="margin-left:auto">✓ 已讀</span>':''}</div><div class="msg">${esc(a.body)}</div>${a.read?'':`<button class="read-btn" data-act="ann-read" data-id="${a.id}" style="margin-top:10px">我已閱讀</button>`}</div>`;
+  }
+
+  let grade='';
+  const gc=myChild();
+  if(store.grades.published && gc && gc.score!=null){
+    grade=`<div class="card" data-act="ptab" data-k="成績" style="cursor:pointer"><div class="lab">🎯 最新成績</div>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:4px"><b style="font-size:15px">${esc(store.grades.exam)}</b>
+      <span style="margin-left:auto;font-size:22px;font-weight:900;color:var(--accent)">${gc.score}<small style="font-size:12px;color:var(--muted)"> 分</small></span></div></div>`;
+  }
+
+  let photos='';
+  if(store.photos.length){
+    photos=`<div class="card"><div class="lab">📸 今天的${esc(store.student.name)}</div>
+      <div class="photo-grid">${store.photos.slice(0,2).map(p=>`<div class="ph ${p.g}"><span>${esc(p.label)}</span></div>`).join('')}</div></div>`;
+  }
+  return `<div class="body">${top}${consentCard}${latest}${grade}${photos}</div>`;
+}
+
+function pContact(){
+  const hwItems=store.homework.length? store.homework.map(h=>`
+    <div class="row"><div class="check ${h.done?'on':''}" data-act="toggle-hw" data-id="${h.id}"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
+      <div class="t">${esc(h.text)}${h.note?`<small>${esc(h.note)}</small>`:''}</div></div>`).join('') : `<div class="empty">今天沒有作業 🎉</div>`;
+  const brItems=store.bring.length? store.bring.map(b=>`
+    <div class="row"><div class="check ${b.done?'on':''}" data-act="toggle-bring" data-id="${b.id}"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
+      <div class="t">${esc(b.text)}${b.note?`<small>${esc(b.note)}</small>`:''}</div></div>`).join('') : `<div class="empty">明天不用帶特別的東西</div>`;
+  return `<div class="body">
+    <div class="info p">✅ 完成的項目可以自己打勾，老師端會同步看到完成人數</div>
+    <div class="card"><div class="lab">✍️ 今日作業</div>${hwItems}</div>
+    <div class="card"><div class="lab">🎒 明日攜帶</div>${brItems}</div>
+  </div>`;
+}
+
+function pAnn(){
+  if(!store.announcements.length) return `<div class="body"><div class="empty"><span class="big">📭</span>目前沒有公告</div></div>`;
+  return `<div class="body">
+    <div class="info p">📣 公告都在這，重要事項點「我已閱讀」老師就知道，不用在群組洗一排「收到」。</div>
+    ${store.announcements.map(a=>`
+    <div class="card announce ${a.important?'imp':''}"><div class="top">${a.important?'<span class="tag">重要</span>':'<span class="pill b">一般</span>'}<b style="font-size:14px">${esc(a.title)}</b>${a.read?'<span class="read-tag" style="margin-left:auto">✓ 已讀</span>':''}</div>
+    ${a.body?`<div class="msg">${esc(a.body)}</div>`:''}
+    <div style="display:flex;align-items:center;gap:8px;margin-top:8px"><div class="time" style="margin:0">老師 · ${esc(a.time)}</div>${a.read?'':`<button class="read-btn" data-act="ann-read" data-id="${a.id}" style="margin-left:auto">我已閱讀</button>`}</div></div>`).join('')}</div>`;
+}
+
+function pGrowth(){
+  const items=[];
+  store.milestones.forEach(m=>items.push({cls:'k',date:m.time,emoji:m.emoji,title:m.title,desc:m.desc}));
+  const g=store.grades, c=myChild();
+  if(g.published && c && c.score!=null) items.push({cls:'a',date:'今天',emoji:'🎯',title:`${g.exam} ${c.score} 分`,desc:'又一個小里程碑，繼續加油！'});
+  store.notes.forEach(n=>items.push({cls:'',date:n.time,emoji:n.emoji,title:n.title,desc:n.desc}));
+  const book=`<div class="book"><div class="k">本學期成長</div>
+    <div class="h">${esc(store.student.name)}的成長紀念冊</div>
+    <div class="s">照片、亮點、作品、成績，系統自動累積成冊，學期末可留存匯出。</div>
+    <span class="b" data-act="pview" data-k="book">翻閱紀念冊 →</span></div>`;
+  const tl=items.length
+    ? `<div class="card"><div class="lab">🌱 成長時間軸</div><div class="timeline">${items.map(it=>`
+        <div class="tl-item ${it.cls}"><div class="tl-date">${esc(it.date)}</div>
+          <div class="tl-card"><div class="n">${it.emoji} ${esc(it.title)}</div>${it.desc?`<div class="d">${esc(it.desc)}</div>`:''}</div></div>`).join('')}</div></div>`
+    : '<div class="empty"><span class="big">🌱</span>老師還沒發布孩子的紀錄</div>';
+  const photos=store.photos.length?`<div class="card"><div class="lab">📸 最近照片</div>
+    <div class="photo-grid">${store.photos.map(p=>`<div class="ph ${p.g}"><span>${esc(p.label)}</span></div>`).join('')}</div></div>`:'';
+  return `<div class="body">${book}${tl}${photos}</div>`;
+}
+
+function pBook(){
+  const my=myChild();
+  const stat=(n,u,k)=>`<div class="stat"><div class="num">${n}<small> ${u}</small></div><div class="k">${k}</div></div>`;
+  const highlights=[...store.milestones,...store.notes].slice(0,6);
+  return `<div class="body">
+    <div class="book" style="padding:26px 20px"><div class="k">2026 上學期 · ${esc(store.className)}</div>
+      <div class="h" style="font-size:25px">${esc(store.student.name)}的<br/>成長紀念冊</div>
+      <div class="s">這一學期的點滴，都幫您留在這裡。</div></div>
+    <div class="stat-grid">
+      ${stat(store.photos.length,'張','照片')}
+      ${stat(store.notes.length,'則','老師亮點')}
+      ${stat(store.milestones.length,'個','成長里程碑')}
+      ${stat(my&&my.score!=null?my.score:'—','分','最近成績')}
+    </div>
+    <div class="card"><div class="lab">✨ 學期亮點</div>${highlights.length?highlights.map(n=>`
+      <div class="note-item"><div class="ava">${n.emoji}</div><div class="c"><div class="n">${esc(n.title)}</div><div class="d">${esc(n.desc)}</div></div></div>`).join(''):'<div class="empty">還在累積中</div>'}</div>
+    <div class="card"><div class="lab">📸 相片牆</div><div class="photo-grid">${store.photos.length?store.photos.map(p=>`<div class="ph ${p.g}"><span>${esc(p.label)}</span></div>`).join(''):'<div class="empty">尚無照片</div>'}</div></div>
+    <div class="info p">💛 LINE 群組洗一洗就找不到；這裡的成長會一直留著，學期末還能匯出成冊。</div>
+  </div>`;
+}
+
+function pCalendar(){
+  const tn={exam:'評量',activity:'活動',fee:'繳費',holiday:'放假'};
+  return `<div class="body">
+    <div class="info p">📅 考試、活動、繳費、放假一次看清楚，不用在群組往上翻。</div>
+    <div class="card">${store.events.map(ev=>{
+      const dd=(ev.date.match(/\/(\d+)/)||[,''])[1]; const mm=(ev.date.match(/^(\d+)/)||[,''])[1];
+      return `<div class="cal-item"><div class="cal-date"><div class="dd">${dd}</div><div class="mm">${mm}月</div></div>
+        <div class="cal-body"><div class="t">${esc(ev.title)}</div><div class="tl-date">${esc(ev.date)}</div></div>
+        <span class="cal-type ${ev.type}">${tn[ev.type]}</span></div>`;}).join('')}</div>
+    <button class="ghost-btn" data-act="addcal">＋ 一鍵加入手機行事曆</button>
+  </div>`;
+}
+
+function pLeave(){
+  const mine=store.leaves.filter(l=>l.seat===store.student.seat);
+  const stName=s=>s==='approved'?'已核准':s==='rejected'?'未核准':'待審核';
+  return `<div class="body">
+    <div class="info p">🤒 孩子生病、遲到，一鍵通知老師，不用打電話或在群組公開留言。</div>
+    <div class="card"><div class="lab">📝 幫 ${esc(store.student.name)} 請假</div>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <select id="leaveType" class="in" style="flex:1"><option>病假</option><option>事假</option><option>遲到</option></select>
+        <input id="leaveDate" class="in" style="flex:1" value="明天 7/10"></div>
+      <textarea id="leaveReason" class="ta" placeholder="原因（例：發燒需就醫）">${esc(ui.scratch.leaveReason)}</textarea>
+      <button class="btn" data-act="submit-leave" style="margin-top:10px">送出給老師</button></div>
+    ${mine.length?`<div class="card"><div class="lab">📮 我送出的請假</div>${mine.map(l=>`
+      <div class="row"><div class="t">${esc(l.type)} · ${esc(l.date)}${l.reason?`<small>${esc(l.reason)}</small>`:''}</div>
+        <span class="pill ${l.status==='approved'?'p':l.status==='rejected'?'a':'g'}">${stName(l.status)}</span></div>`).join('')}</div>`:''}
+  </div>`;
+}
+
+function pChat(){
+  return `<div class="body">
+    <div class="chat-note">🔕 老師回覆時間：${esc(store.messages.officeHours)}（非上班時間免打擾）</div>
+    <div class="chat-wrap">${store.messages.list.map(m=>`
+      <div class="msg-b ${m.from==='teacher'?'in':'out'}">${esc(m.text)}<span class="tm">${esc(m.time)}</span></div>`).join('')}</div>
+    <div class="send"><input id="msgP" class="in" placeholder="輸入訊息…" value="${esc(ui.scratch.msgP)}"><button class="sendbtn" data-act="send-msg-p">➤</button></div>
+    <div style="font-size:11px;color:var(--muted);text-align:center">一對一私訊，其他家長看不到 🔒</div>
+  </div>`;
+}
+
+function pGrade(){
+  const g=store.grades, child=myChild();
+  const my=child?child.score:null;
+  const sc=scoreList();
+  const dist=computeDist().filter(d=>d.count>0);
+  const max=Math.max(1,...dist.map(d=>d.count));
+  const mi=my==null?-1:dist.findIndex(d=>my>=d.lo&&my<=d.hi);
+  const pctTxt=my==null?'':`勝過班上 ${Math.round(sc.filter(v=>v<my).length/(sc.length||1)*100)}% 同學`;
+  const scoreCard=my==null
+    ? `<div class="card hero-card"><div class="lab">🎯 ${esc(store.student.name)}的成績</div><div class="empty" style="padding:12px 0">老師尚未登記分數</div></div>`
+    : `<div class="score-hero"><div class="kicker">${esc(store.student.name)}的成績 · 僅您可見</div>
+        <div style="display:flex;align-items:baseline;gap:8px;margin-top:6px"><span class="n">${my}</span><span class="u">分 · ${esc(g.exam)}</span></div>
+        ${pctTxt?`<div class="rp">📈 ${pctTxt}</div>`:''}</div>`;
+  const distCard=g.showDist
+    ? `<div class="card"><div class="lab">📈 全班級距（系統自動計算）</div>
+        ${dist.map((d,i)=>`<div class="grade-row"><span class="name">${d.range}</span>
+          <div class="bar"><span class="${i===mi?'mine':''}" style="width:${Math.round(d.count/max*100)}%"></span></div>
+          <span class="v">${d.count}人</span></div>`).join('')||'<div class="empty">尚無成績資料</div>'}
+        <div style="font-size:11px;color:var(--muted);margin-top:12px;line-height:1.5">🔒 級距全班家長皆可看，個人確切分數只有自己看得到。</div></div>`
+    : `<div class="info p">老師本次未公開全班級距，僅顯示您孩子的成績。</div>`;
+  return `<div class="body">${scoreCard}${distCard}</div>`;
+}
+
+/* ============================ 老師端 ============================ */
+const TTABS=[{k:'總覽',ic:'📋'},{k:'公告',ic:'📣'},{k:'聯絡簿',ic:'📒'},{k:'成長',ic:'🌱'},{k:'成績',ic:'📊'}];
+const EMOJIS=['🌟','🍚','📖','🤝','🎨','⚽','🧹','😊'];
+const TVIEWS={
+  leaves:{h:'請假審核',fn:()=>tLeaves()},
+  consent:{h:'同意書追蹤',fn:()=>tConsent()},
+  chat:{h:'家長訊息',fn:()=>tChat()},
+};
+const ANN_TMPLS=[
+  {t:'回家作業提醒',b:'今日作業已更新於聯絡簿，請協助孩子完成並簽名，謝謝。'},
+  {t:'天氣提醒',b:'明日天氣轉涼，請幫孩子準備薄外套。'},
+  {t:'活動預告',b:'下週將舉辦班級活動，詳細事項稍後公布，敬請留意。'},
+];
+
+function captureCompose(){
+  const g=id=>document.getElementById(id);
+  if(g('annTitle'))ui.scratch.annTitle=g('annTitle').value;
+  if(g('annBody'))ui.scratch.annBody=g('annBody').value;
+  if(g('hwInput'))ui.scratch.hwInput=g('hwInput').value;
+  if(g('bringInput'))ui.scratch.bringInput=g('bringInput').value;
+  if(g('noteTitle'))ui.scratch.noteTitle=g('noteTitle').value;
+  if(g('noteDesc'))ui.scratch.noteDesc=g('noteDesc').value;
+  if(g('photoLabel'))ui.scratch.photoLabel=g('photoLabel').value;
+  if(g('leaveReason'))ui.scratch.leaveReason=g('leaveReason').value;
+  if(g('msgP'))ui.scratch.msgP=g('msgP').value;
+  if(g('msgT'))ui.scratch.msgT=g('msgT').value;
+}
+function unsignedList(){ return store.roster.filter(s=>!store.consent.signed[s.seat]); }
+function pendingLeaves(){ return store.leaves.filter(l=>l.status==='pending'); }
+
+function renderTeacher(){
+  const el=document.getElementById('teacherScreen');
+  const prev=el.querySelector('.scr-scroll'); const ps=prev?prev.scrollTop:0;
+  const tab=ui.teacher.tab;
+  const view=ui.teacher.view;
+  let content,head,key;
+  if(view && TVIEWS[view]){ content=TVIEWS[view].fn(); head=TVIEWS[view].h; key='v:'+view; }
+  else{
+    key=tab;
+    const heads={'總覽':'後台總覽','公告':'發布公告','聯絡簿':`今日聯絡簿 · ${store.date}`,'成長':'記錄孩子的成長','成績':'登錄成績'};
+    head=heads[tab];
+    if(tab==='總覽') content=tHome();
+    else if(tab==='公告') content=tAnn();
+    else if(tab==='聯絡簿') content=tContact();
+    else if(tab==='成長') content=tPerf();
+    else if(tab==='成績') content=tGrade();
+  }
+  const changed=ui.teacher._last!==key; ui.teacher._last=key;
+  const bar=TTABS.map(t=>`<div class="tab t ${(!view&&t.k===tab)?'act':''}" data-act="ttab" data-k="${t.k}"><span class="ic">${t.ic}</span>${t.k}</div>`).join('');
+  const btn=view?`<button class="logout" data-act="tback">‹ 返回</button>`:'';
+  el.innerHTML=statusbar+
+    `<div class="appbar t">${btn}<div class="cls">👩‍🏫 導師後台 · ${esc(store.className)}</div><div class="h">${esc(head)}</div></div>`+
+    `<div class="scr-scroll"><div class="${changed?'page-anim':''}">${content}</div></div>`+
+    `<div class="tabbar">${bar}</div>`;
+  if(!changed){ const s=el.querySelector('.scr-scroll'); if(s) s.scrollTop=ps; }
+}
+
+function tHome(){
+  const done=store.homework.filter(h=>h.done).length;
+  const total=store.homework.length, pct=total?Math.round(done/total*100):0;
+  const pl=pendingLeaves().length, un=unsignedList().length;
+  const todo=`<div class="card"><div class="lab">🔔 今日待辦</div>
+    <div style="display:flex;flex-direction:column;gap:9px;margin-top:6px">
+      <div class="alert"><div class="ai" style="background:var(--pink-soft)">🤒</div>
+        <div class="at">${pl} 筆請假待審核<small>家長線上請假，一鍵准駁</small></div><span class="go" data-act="tview" data-k="leaves">前往</span></div>
+      <div class="alert"><div class="ai" style="background:var(--accent-soft)">✍️</div>
+        <div class="at">${un} 位未簽同意書<small>${esc(store.consent.title)} · ${esc(store.consent.deadline)} 截止</small></div><span class="go" data-act="tview" data-k="consent">追蹤</span></div>
+      <div class="alert"><div class="ai" style="background:var(--blue-soft)">💬</div>
+        <div class="at">家長私訊<small>回覆時間 ${esc(store.messages.officeHours)}</small></div><span class="go" data-act="tview" data-k="chat">開啟</span></div>
+    </div></div>`;
+  return `<div class="body">
+    <div class="feature t">${ring(pct,'#ffffff','rgba(255,255,255,.3)')}
+      <div class="ft"><div class="kicker">今日班級動態</div>
+        <div class="ft-h">家長完成 ${done}/${total} 項作業</div>
+        <div class="ft-sub">${store.announcements.length} 則公告 · ${store.bring.length} 項攜帶 · 即時更新</div></div></div>
+    ${todo}
+    <div class="stat-grid">
+      <div class="stat"><div class="num">${store.classSize}<small> 位</small></div><div class="k">班級人數</div></div>
+      <div class="stat"><div class="num" style="color:var(--primary)">${done}<small>/${store.homework.length} 項</small></div><div class="k">作業家長已勾完成</div></div>
+      <div class="stat"><div class="num">${store.announcements.length}<small> 則</small></div><div class="k">目前公告</div></div>
+      <div class="stat"><div class="num">${store.bring.length}<small> 項</small></div><div class="k">明日攜帶</div></div>
+    </div>
+    <div class="quick">
+      <div class="q" data-act="ttab" data-k="公告"><div class="qi" style="background:var(--accent-soft)">📣</div><div class="qt">發公告</div><div class="qs">全班通知</div></div>
+      <div class="q" data-act="ttab" data-k="聯絡簿"><div class="qi" style="background:var(--primary-soft)">📒</div><div class="qt">寫聯絡簿</div><div class="qs">作業/攜帶</div></div>
+      <div class="q" data-act="ttab" data-k="成長"><div class="qi" style="background:var(--blue-soft)">📸</div><div class="qt">記成長</div><div class="qs">文字/照片</div></div>
+      <div class="q" data-act="ttab" data-k="成績"><div class="qi" style="background:var(--pink-soft)">📊</div><div class="qt">登成績</div><div class="qs">分數/級距</div></div>
+    </div>
+    <div class="info a">☝️ 這裡的每個動作都會即時反映到左邊家長端</div>
+  </div>`;
+}
+
+function tAnn(){
+  const list=store.announcements.length? store.announcements.map(a=>{
+    const read=(a.others||0)+(a.read?1:0);
+    return `<div class="edit-row"><div class="t">${a.important?'🔴 ':''}${esc(a.title)}<small>${esc(a.time)} · 已讀 ${read}/${store.classSize}</small></div>
+      <button class="del" data-act="del-ann" data-id="${a.id}">✕</button></div>`;}).join(''):`<div class="empty">尚無公告</div>`;
+  return `<div class="body">
+    <div class="card">
+      <div class="lab">✏️ 新增公告</div>
+      <div class="tmpls">${ANN_TMPLS.map((x,i)=>`<span class="tmpl" data-act="use-tmpl-ann" data-id="${i}">＋ ${esc(x.t)}</span>`).join('')}</div>
+      <input id="annTitle" class="in" placeholder="公告標題，例如：校外教學同意書" value="${esc(ui.scratch.annTitle)}">
+      <textarea id="annBody" class="ta" placeholder="公告內容…">${esc(ui.scratch.annBody)}</textarea>
+      <div class="toggle-row"><div class="tx">標記為「重要」<small>家長端置頂紅標</small></div>
+        <label class="sw2"><input type="checkbox" id="annImp"><span class="sw2-tr"></span></label></div>
+      <div class="toggle-row" style="padding-bottom:0"><div class="tx">排程發布<small>指定時間自動發（demo 示意）</small></div>
+        <input class="in" style="width:120px;height:36px;margin-top:0" value="明早 07:30"></div>
+      <button class="btn amber" data-act="add-ann" style="margin-top:10px">發布給全班家長</button>
+    </div>
+    <div class="card"><div class="lab">📋 已發布（${store.announcements.length}）· 可看已讀率</div>${list}</div>
+  </div>`;
+}
+
+function tContact(){
+  const done=store.homework.filter(h=>h.done).length;
+  const hw=store.homework.length? store.homework.map(h=>`
+    <div class="edit-row"><div class="check ${h.done?'on':''}" style="cursor:default"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
+      <div class="t">${esc(h.text)}</div><button class="del" data-act="del-hw" data-id="${h.id}">✕</button></div>`).join(''):`<div class="empty" style="padding:12px">尚未新增作業</div>`;
+  const br=store.bring.length? store.bring.map(b=>`
+    <div class="edit-row"><div class="t">🎒 ${esc(b.text)}${b.note?`<small>${esc(b.note)}</small>`:''}</div>
+      <button class="del" data-act="del-bring" data-id="${b.id}">✕</button></div>`).join(''):`<div class="empty" style="padding:12px">尚未新增攜帶物品</div>`;
+  return `<div class="body">
+    <div class="info p">家長已完成 ${done} / ${store.homework.length} 項作業（即時統計）</div>
+    <button class="ghost-btn" data-act="copy-yesterday">⟳ 複製昨天的聯絡簿（再微調就好）</button>
+    <div class="card"><div class="lab">✍️ 今日作業</div>${hw}
+      <div class="addrow"><input id="hwInput" class="in" placeholder="新增一項作業…" value="${esc(ui.scratch.hwInput)}"><button class="addbtn p" data-act="add-hw">＋</button></div></div>
+    <div class="card"><div class="lab">🎒 明日攜帶</div>${br}
+      <div class="addrow"><input id="bringInput" class="in" placeholder="新增攜帶物品…" value="${esc(ui.scratch.bringInput)}"><button class="addbtn p" data-act="add-bring">＋</button></div></div>
+  </div>`;
+}
+
+function tPerf(){
+  const notes=store.notes.length? store.notes.map(n=>`
+    <div class="note-item"><div class="ava">${n.emoji}</div><div class="c"><div class="n">${esc(n.title)}</div><div class="d">${esc(n.desc)}</div><div class="time">${esc(n.time)}</div></div>
+      <button class="del" data-act="del-note" data-id="${n.id}">✕</button></div>`).join(''):`<div class="empty" style="padding:12px">尚無文字紀錄</div>`;
+  const photos=store.photos.length?`<div class="photo-grid">${store.photos.map(p=>`<div class="ph ${p.g}"><span>${esc(p.label)}</span><span class="x" data-act="del-photo" data-id="${p.id}">✕</span></div>`).join('')}</div>`:`<div class="empty" style="padding:12px">尚無照片</div>`;
+  return `<div class="body">
+    <div class="card"><div class="lab">📝 新增文字紀錄</div>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <select id="noteEmoji" class="in" style="width:70px">${EMOJIS.map(e=>`<option>${e}</option>`).join('')}</select>
+        <input id="noteTitle" class="in" placeholder="標題，如：主動幫助同學" value="${esc(ui.scratch.noteTitle)}"></div>
+      <textarea id="noteDesc" class="ta" placeholder="描述孩子今天的表現…">${esc(ui.scratch.noteDesc)}</textarea>
+      <button class="btn amber" data-act="add-note" style="margin-top:10px">發布到家長端</button>
+      ${notes}
+    </div>
+    <div class="card"><div class="lab">📸 照片紀錄</div>${photos}
+      <div class="addrow"><input id="photoLabel" class="in" placeholder="照片說明，如：分組合作" value="${esc(ui.scratch.photoLabel)}"><button class="addbtn" data-act="add-photo">＋</button></div>
+      <div style="font-size:11px;color:var(--muted);margin-top:8px">Demo 用色塊代表照片；實際版本可上傳相片。</div>
+    </div>
+  </div>`;
+}
+
+function tLeaves(){
+  const stName=s=>s==='approved'?'已核准':s==='rejected'?'未核准':'待審核';
+  const ls=store.leaves;
+  return `<div class="body">
+    <div class="info a">🤒 家長線上請假直接進來，這裡一鍵准駁，不漏接、不用接電話。</div>
+    ${ls.length?ls.map(l=>`<div class="card">
+      <div class="top" style="display:flex;align-items:center;gap:9px">
+        <div class="ava a" style="width:36px;height:36px">🤒</div>
+        <div style="flex:1"><div style="font-size:14px;font-weight:800">${esc(l.name)}（${esc(l.seat)}）· ${esc(l.type)}</div><div class="tl-date">${esc(l.date)}</div></div>
+        <span class="pill ${l.status==='approved'?'p':l.status==='rejected'?'a':'g'}">${stName(l.status)}</span></div>
+      <div class="msg" style="box-shadow:none;background:#f4f6f7;max-width:100%;margin-top:8px">${esc(l.reason)}</div>
+      ${l.status==='pending'?`<div style="display:flex;gap:8px;margin-top:10px">
+        <button class="btn" data-act="approve-leave" data-id="${l.id}" style="height:42px">核准</button>
+        <button class="ghost-btn" data-act="reject-leave" data-id="${l.id}" style="width:auto;flex:1">未核准</button></div>`:''}
+    </div>`).join(''):'<div class="empty"><span class="big">✅</span>目前沒有待審核的請假</div>'}
+  </div>`;
+}
+
+function tConsent(){
+  const signed=store.roster.filter(s=>store.consent.signed[s.seat]);
+  const unsigned=unsignedList();
+  const pct=Math.round(signed.length/store.roster.length*100);
+  return `<div class="body">
+    <div class="feature t">${ring(pct,'#ffffff','rgba(255,255,255,.3)')}
+      <div class="ft"><div class="kicker">${esc(store.consent.title)}</div>
+        <div class="ft-h">已簽 ${signed.length}/${store.roster.length}</div>
+        <div class="ft-sub">${esc(store.consent.deadline)} 截止 · 不用一張張追紙本</div></div></div>
+    ${unsigned.length?`<button class="btn amber" data-act="remind-unsigned">📣 一鍵提醒 ${unsigned.length} 位未簽家長</button>`:''}
+    <div class="card"><div class="lab">❌ 未簽（${unsigned.length}）</div>${unsigned.length?unsigned.map(s=>`
+      <div class="rl"><div class="seat">${s.seat}</div><div class="nm">${esc(s.name)}</div><span class="st no">未簽</span></div>`).join(''):'<div class="empty">全班都簽好了 🎉</div>'}</div>
+    <div class="card"><div class="lab">✅ 已簽（${signed.length}）</div>${signed.map(s=>`
+      <div class="rl"><div class="seat">${s.seat}</div><div class="nm">${esc(s.name)}</div><span class="st ok">已簽</span></div>`).join('')}</div>
+  </div>`;
+}
+
+function tChat(){
+  return `<div class="body">
+    <div class="chat-note">與 ${esc(store.student.name)} 家長 · 回覆時間 ${esc(store.messages.officeHours)}</div>
+    <div class="chat-wrap">${store.messages.list.map(m=>`
+      <div class="msg-b ${m.from==='parent'?'in':'out t'}">${esc(m.text)}<span class="tm">${esc(m.time)}</span></div>`).join('')}</div>
+    <div class="send"><input id="msgT" class="in" placeholder="回覆家長…" value="${esc(ui.scratch.msgT)}"><button class="sendbtn t" data-act="send-msg-t">➤</button></div>
+    <div style="font-size:11px;color:var(--muted);text-align:center">私訊有明確回覆時段，不用 24 小時待命 🔕</div>
+  </div>`;
+}
+
+function gradePreviewHtml(){
+  const dist=computeDist(); const entered=scoreList().length; const max=Math.max(1,...dist.map(d=>d.count));
+  return `<div class="lab">📊 系統自動算出的級距（已登記 ${entered}/${store.roster.length} 人）</div>`+
+    (dist.filter(d=>d.count>0).map(d=>`<div class="grade-row"><span class="name">${d.range}</span>
+      <div class="bar"><span style="width:${Math.round(d.count/max*100)}%"></span></div><span class="v">${d.count}人</span></div>`).join('')
+      || '<div class="empty" style="padding:10px">尚未輸入分數</div>')+
+    `<div style="font-size:11px;color:var(--muted);margin-top:10px">老師只要 key 分數，級距與家長端長條圖都會自動更新，不用自己算。</div>`;
+}
+function updateGradePreview(){ const box=document.getElementById('teacherGradePreview'); if(box) box.innerHTML=gradePreviewHtml(); }
+
+function tGrade(){
+  const g=store.grades;
+  return `<div class="body">
+    <div class="card" style="border-color:rgba(242,153,74,.3)">
+      <div class="toggle-row" style="padding-top:0"><div class="tx">在家長端顯示「成績」欄位<small>關閉時家長完全看不到此區塊</small></div>
+        <label class="sw2"><input type="checkbox" data-model="published" ${g.published?'checked':''}><span class="sw2-tr"></span></label></div>
+      <div class="toggle-row" style="padding-bottom:0"><div class="tx">公開全班級距<small>去識別化長條圖</small></div>
+        <label class="sw2"><input type="checkbox" data-model="showDist" ${g.showDist?'checked':''}><span class="sw2-tr"></span></label></div>
+    </div>
+    <div class="card"><div class="lab">📋 考試名稱</div>
+      <input class="in" data-model="exam" value="${esc(g.exam)}" placeholder="例如：數學小考"></div>
+    <div class="card"><div class="lab">⌨️ 輸入各生分數</div>
+      ${store.roster.map(s=>`<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--line)">
+        <div class="ava" style="width:28px;height:28px;border-radius:8px;font-size:11px;font-weight:800">${s.seat}</div>
+        <div style="font-size:13px;font-weight:600;flex:1">${esc(s.name)}${s.seat===store.student.seat?' <span class="pill p" style="font-size:9px;padding:2px 6px">示範帳號</span>':''}</div>
+        <input class="in" data-model="score:${s.seat}" data-type="num" type="number" value="${s.score==null?'':s.score}" placeholder="—" style="width:66px;text-align:center"></div>`).join('')}
+      <div style="font-size:11px;color:var(--muted);margin-top:10px">留空＝尚未登記；只填部分學生也沒問題。</div>
+    </div>
+    <div class="card hero-card" id="teacherGradePreview">${gradePreviewHtml()}</div>
+    <button class="btn amber" data-act="save-grade">${g.published?'成績已同步至家長端 ✓':'儲存（目前未對家長顯示）'}</button>
+  </div>`;
+}
+
+/* ============================ 事件 ============================ */
+function renderAll(){ renderParent(); renderTeacher(); }
+
+let toastTimer;
+function toast(msg){
+  const t=document.getElementById('toast'); t.textContent='✓ '+msg; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),1900);
+}
+
+document.addEventListener('change',e=>{
+  const el=e.target.closest('[data-model]'); if(!el) return;
+  const m=el.getAttribute('data-model');
+  if(m==='published'){ store.grades.published=el.checked; save(); toast(el.checked?'家長端已顯示成績欄位':'已對家長隱藏成績欄位'); renderParent(); renderTeacher(); return; }
+  if(m==='showDist'){ store.grades.showDist=el.checked; save(); renderParent(); return; }
+  if(m==='exam'){ store.grades.exam=el.value; save(); renderParent(); return; }
+  if(m.startsWith('score:')){ const seat=m.split(':')[1]; const st=store.roster.find(s=>s.seat===seat);
+    if(st) st.score = el.value===''? null : (Number(el.value)||0); save(); updateGradePreview(); renderParent(); return; }
+});
+
+document.addEventListener('click',e=>{
+  const el=e.target.closest('[data-act]'); if(!el) return;
+  const act=el.getAttribute('data-act'); const id=+el.getAttribute('data-id');
+  captureCompose();
+  let out='both';
+  switch(act){
+    case 'reset': localStorage.removeItem(KEY); store=load(); ui.parent={loggedIn:false,tab:'首頁',view:null,_last:null}; ui.teacher={tab:'總覽',view:null,_last:null};
+      ui.scratch={annTitle:'',annBody:'',hwInput:'',bringInput:'',noteTitle:'',noteDesc:'',photoLabel:'',leaveReason:'',msgP:'',msgT:''}; renderAll(); toast('已重設 Demo 資料'); return;
+    case 'login': ui.parent.loggedIn=true; ui.parent.tab='首頁'; ui.parent.view=null; out='parent'; break;
+    case 'logout': ui.parent.loggedIn=false; ui.parent.view=null; out='parent'; break;
+    case 'ptab': ui.parent.tab=el.getAttribute('data-k'); ui.parent.view=null; out='parent'; break;
+    case 'ttab': ui.teacher.tab=el.getAttribute('data-k'); ui.teacher.view=null; out='teacher'; break;
+    case 'pview': ui.parent.view=el.getAttribute('data-k'); out='parent'; break;
+    case 'pback': ui.parent.view=null; out='parent'; break;
+    case 'tview': ui.teacher.view=el.getAttribute('data-k'); out='teacher'; break;
+    case 'tback': ui.teacher.view=null; out='teacher'; break;
+    case 'ann-read':{ const a=store.announcements.find(x=>x.id===id); if(a)a.read=true; toast('已回報老師：您已閱讀'); out='both'; break; }
+    case 'sign-consent':{ store.consent.signed[store.student.seat]=true; toast('同意書已線上簽署 ✓'); out='both'; break; }
+    case 'submit-leave':{ const r=ui.scratch.leaveReason.trim(); const ty=document.getElementById('leaveType')?.value||'病假'; const dt=document.getElementById('leaveDate')?.value||'明天';
+      store.leaves.unshift({id:nid(store.leaves),seat:store.student.seat,name:store.student.name,date:dt,type:ty,reason:r||'（未填原因）',status:'pending'}); ui.scratch.leaveReason=''; toast('請假已送出，老師會收到通知'); out='both'; break; }
+    case 'approve-leave':{ const l=store.leaves.find(x=>x.id===id); if(l)l.status='approved'; toast('已核准請假'); out='both'; break; }
+    case 'reject-leave':{ const l=store.leaves.find(x=>x.id===id); if(l)l.status='rejected'; toast('已標記未核准'); out='both'; break; }
+    case 'remind-unsigned': toast('已推播提醒 '+unsignedList().length+' 位未簽家長'); out='teacher'; break;
+    case 'send-msg-p':{ const t=ui.scratch.msgP.trim(); if(!t){toast('請先輸入訊息');return;} store.messages.list.push({id:nid(store.messages.list),from:'parent',text:t,time:'剛剛'}); ui.scratch.msgP=''; toast('訊息已送出'); out='both'; break; }
+    case 'send-msg-t':{ const t=ui.scratch.msgT.trim(); if(!t){toast('請先輸入訊息');return;} store.messages.list.push({id:nid(store.messages.list),from:'teacher',text:t,time:'剛剛'}); ui.scratch.msgT=''; toast('已回覆家長'); out='both'; break; }
+    case 'use-tmpl-ann':{ const x=ANN_TMPLS[id]; if(x){ui.scratch.annTitle=x.t;ui.scratch.annBody=x.b;} toast('已套用範本，微調後即可發布'); out='teacher'; break; }
+    case 'copy-yesterday': store.homework=[{id:1,text:'數學習作 P.10–11',note:'家長簽名',done:false},{id:2,text:'國語生字 甲本一頁',note:'',done:false},{id:3,text:'朗讀課文並簽名',note:'',done:false}];
+      store.bring=[{id:1,text:'直笛',note:'音樂課',done:false},{id:2,text:'彩色筆',note:'美勞課',done:false}]; toast('已複製昨天聯絡簿，微調即可'); out='both'; break;
+    case 'addcal': toast('已加入手機行事曆（demo 示意）'); return;
+    case 'toggle-hw':{ const it=store.homework.find(h=>h.id===id); if(it)it.done=!it.done; break; }
+    case 'toggle-bring':{ const it=store.bring.find(b=>b.id===id); if(it)it.done=!it.done; break; }
+    case 'add-ann':{ const t=ui.scratch.annTitle.trim(),b=ui.scratch.annBody.trim(); const imp=document.getElementById('annImp')?.checked;
+      if(!t&&!b){toast('請先輸入公告內容');return;} store.announcements.unshift({id:nid(store.announcements),title:t||'（無標題）',body:b,important:!!imp,time:'剛剛'});
+      ui.scratch.annTitle='';ui.scratch.annBody=''; toast('公告已發布'); break; }
+    case 'del-ann': store.announcements=store.announcements.filter(a=>a.id!==id); break;
+    case 'add-hw':{ const v=ui.scratch.hwInput.trim(); if(!v){toast('請先輸入作業');return;} store.homework.push({id:nid(store.homework),text:v,note:'',done:false}); ui.scratch.hwInput=''; toast('已新增作業'); break; }
+    case 'del-hw': store.homework=store.homework.filter(h=>h.id!==id); break;
+    case 'add-bring':{ const v=ui.scratch.bringInput.trim(); if(!v){toast('請先輸入物品');return;} store.bring.push({id:nid(store.bring),text:v,note:'',done:false}); ui.scratch.bringInput=''; toast('已新增攜帶物品'); break; }
+    case 'del-bring': store.bring=store.bring.filter(b=>b.id!==id); break;
+    case 'add-note':{ const t=ui.scratch.noteTitle.trim(),d=ui.scratch.noteDesc.trim(); const em=document.getElementById('noteEmoji')?.value||'🌟';
+      if(!t&&!d){toast('請先輸入內容');return;} store.notes.unshift({id:nid(store.notes),emoji:em,title:t||'紀錄',desc:d,time:'剛剛'}); ui.scratch.noteTitle='';ui.scratch.noteDesc=''; toast('表現已發布'); break; }
+    case 'del-note': store.notes=store.notes.filter(n=>n.id!==id); break;
+    case 'add-photo':{ const v=ui.scratch.photoLabel.trim()||'班級活動'; store.photos.push({id:nid(store.photos),label:v,g:'g'+((store.photos.length%4)+1)}); ui.scratch.photoLabel=''; toast('已加入照片'); break; }
+    case 'del-photo': store.photos=store.photos.filter(p=>p.id!==id); break;
+    case 'save-grade': toast(store.grades.published?'成績已同步到家長端':'已儲存（尚未對家長顯示）'); out='teacher'; break;
+  }
+  save();
+  if(out==='parent') renderParent();
+  else if(out==='teacher') renderTeacher();
+  else { renderParent(); renderTeacher(); }
+});
+
+renderAll();
+</script>
+</body>
+</html>
