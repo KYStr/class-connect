@@ -814,6 +814,8 @@ select.in {
   background: #f4f6f8;
   color: var(--muted);
   font-size: 14px;
+  line-height: 1;
+  transition: 0.2s;
 }
 .track-block {
   margin-top: 12px;
@@ -855,11 +857,6 @@ select.in {
   background: var(--pink-soft);
   border-radius: 999px;
   padding: 6px 10px;
-}
-  color: var(--muted);
-  font-size: 14px;
-  line-height: 1;
-  transition: 0.2s;
 }
 .del:hover {
   background: var(--pink-soft);
