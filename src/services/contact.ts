@@ -205,3 +205,75 @@ export async function toggleHomeworkDone(
   );
   if (error) throw error;
 }
+
+export interface HomeworkTrackItem {
+  homeworkId: string;
+  text: string;
+  doneCount: number;
+  totalCount: number;
+  incomplete: { studentId: string; seat: string; name: string }[];
+}
+
+/** Per-homework incomplete students for teacher attention tracking. */
+export async function listHomeworkTracking(
+  classId: string,
+  date: string,
+): Promise<HomeworkTrackItem[]> {
+  const [{ data: hw, error: hwErr }, { data: students, error: stErr }] = await Promise.all([
+    supabase
+      .from('homework_items')
+      .select('id, text')
+      .eq('class_id', classId)
+      .eq('due_date', date)
+      .order('created_at', { ascending: true }),
+    supabase
+      .from('students')
+      .select('id, seat, name')
+      .eq('class_id', classId)
+      .order('seat', { ascending: true }),
+  ]);
+  if (hwErr) throw hwErr;
+  if (stErr) throw stErr;
+
+  const hwRows = (hw ?? []) as { id: string; text: string }[];
+  const roster = (students ?? []) as { id: string; seat: string; name: string }[];
+  if (hwRows.length === 0 || roster.length === 0) {
+    return hwRows.map((h) => ({
+      homeworkId: h.id,
+      text: h.text,
+      doneCount: 0,
+      totalCount: roster.length,
+      incomplete: roster.map((s) => ({ studentId: s.id, seat: s.seat, name: s.name })),
+    }));
+  }
+
+  const { data: statuses, error: sErr } = await supabase
+    .from('homework_status')
+    .select('homework_id, student_id, done')
+    .in(
+      'homework_id',
+      hwRows.map((h) => h.id),
+    );
+  if (sErr) throw sErr;
+
+  const doneSet = new Set(
+    (statuses ?? [])
+      .filter((s) => s.done)
+      .map((s) => `${s.homework_id as string}:${s.student_id as string}`),
+  );
+
+  return hwRows.map((h) => {
+    const incomplete = roster.filter((s) => !doneSet.has(`${h.id}:${s.id}`));
+    return {
+      homeworkId: h.id,
+      text: h.text,
+      doneCount: roster.length - incomplete.length,
+      totalCount: roster.length,
+      incomplete: incomplete.map((s) => ({
+        studentId: s.id,
+        seat: s.seat,
+        name: s.name,
+      })),
+    };
+  });
+}

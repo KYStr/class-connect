@@ -116,3 +116,107 @@ export async function markAnnouncementRead(announcementId: string): Promise<void
     );
   if (error) throw error;
 }
+
+export interface AnnouncementTrackItem {
+  announcementId: string;
+  title: string;
+  important: boolean;
+  readCount: number;
+  totalCount: number;
+  unread: {
+    parentId: string;
+    parentName: string;
+    studentId: string;
+    studentSeat: string;
+    studentName: string;
+    relation: string | null;
+  }[];
+}
+
+/** Per-announcement unread guardians for teacher attention tracking. */
+export async function listAnnouncementTracking(
+  classId: string,
+): Promise<AnnouncementTrackItem[]> {
+  const [{ data: anns, error: aErr }, { data: students, error: stErr }] = await Promise.all([
+    supabase
+      .from('announcements')
+      .select('id, title, important, published_at')
+      .eq('class_id', classId)
+      .lte('published_at', new Date().toISOString())
+      .order('published_at', { ascending: false }),
+    supabase.from('students').select('id, seat, name').eq('class_id', classId),
+  ]);
+  if (aErr) throw aErr;
+  if (stErr) throw stErr;
+
+  const annRows = (anns ?? []) as {
+    id: string;
+    title: string;
+    important: boolean;
+    published_at: string;
+  }[];
+  const studentRows = (students ?? []) as { id: string; seat: string; name: string }[];
+  if (annRows.length === 0) return [];
+
+  const studentIds = studentRows.map((s) => s.id);
+  const { data: guards, error: gErr } = await supabase
+    .from('guardianships')
+    .select('student_id, parent_id, relation')
+    .in('student_id', studentIds.length ? studentIds : ['00000000-0000-0000-0000-000000000000']);
+  if (gErr) throw gErr;
+
+  const guardRows = (guards ?? []) as {
+    student_id: string;
+    parent_id: string;
+    relation: string | null;
+  }[];
+  const parentIds = [...new Set(guardRows.map((g) => g.parent_id))];
+  const { data: parents, error: pErr } = await supabase
+    .from('profiles')
+    .select('id, display_name')
+    .in('id', parentIds.length ? parentIds : ['00000000-0000-0000-0000-000000000000']);
+  if (pErr) throw pErr;
+  const parentName = new Map(
+    ((parents ?? []) as { id: string; display_name: string }[]).map((p) => [
+      p.id,
+      p.display_name,
+    ]),
+  );
+  const studentById = new Map(studentRows.map((s) => [s.id, s]));
+
+  const { data: reads, error: rErr } = await supabase
+    .from('announcement_reads')
+    .select('announcement_id, parent_id')
+    .in(
+      'announcement_id',
+      annRows.map((a) => a.id),
+    );
+  if (rErr) throw rErr;
+  const readSet = new Set(
+    (reads ?? []).map((r) => `${r.announcement_id as string}:${r.parent_id as string}`),
+  );
+
+  return annRows.map((a) => {
+    const unread = guardRows
+      .filter((g) => !readSet.has(`${a.id}:${g.parent_id}`))
+      .map((g) => {
+        const s = studentById.get(g.student_id);
+        return {
+          parentId: g.parent_id,
+          parentName: parentName.get(g.parent_id) ?? '家長',
+          studentId: g.student_id,
+          studentSeat: s?.seat ?? '',
+          studentName: s?.name ?? '',
+          relation: g.relation,
+        };
+      });
+    return {
+      announcementId: a.id,
+      title: a.title,
+      important: a.important,
+      readCount: guardRows.length - unread.length,
+      totalCount: guardRows.length,
+      unread,
+    };
+  });
+}

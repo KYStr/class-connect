@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Button, Card, EmptyState, GhostButton, useToast } from '@/ui';
+import { Card, EmptyState, GhostButton, useToast } from '@/ui';
 import {
   useAddBring,
   useAddHomework,
@@ -11,6 +11,7 @@ import {
   useHomeworkCompletion,
 } from '@/hooks/useContact';
 import { todayIso } from '@/services/contact';
+import { HomeworkTrackingPanel } from './HomeworkTrackingPanel';
 
 // Teacher contact-book tab (SPEC 3.2 / L3 / L11).
 export function ContactPanel({ classId }: { classId: string | undefined }) {
@@ -26,6 +27,7 @@ export function ContactPanel({ classId }: { classId: string | undefined }) {
   const copy = useCopyYesterday(classId, date);
   const [hwText, setHwText] = useState('');
   const [brText, setBrText] = useState('');
+  const [showTracking, setShowTracking] = useState(false);
 
   if (!classId) return <EmptyState>請先建立班級</EmptyState>;
 
@@ -33,11 +35,44 @@ export function ContactPanel({ classId }: { classId: string | undefined }) {
   const total = completion?.total ?? 0;
   const pct = total === 0 ? 0 : Math.round((done / total) * 100);
 
+  const submitHw = () => {
+    if (!hwText.trim()) return;
+    addHw.mutate(
+      { text: hwText.trim() },
+      {
+        onSuccess: () => {
+          setHwText('');
+          toast('已加入作業');
+        },
+      },
+    );
+  };
+
+  const submitBr = () => {
+    if (!brText.trim()) return;
+    addBr.mutate(
+      { text: brText.trim() },
+      {
+        onSuccess: () => {
+          setBrText('');
+          toast('已加入攜帶');
+        },
+      },
+    );
+  };
+
   return (
     <>
-      <div className="info a">
-        今日完成 {done}/{total}（{pct}%）· 家長打勾後會同步上來
-      </div>
+      <button
+        type="button"
+        className="info a"
+        style={{ width: '100%', textAlign: 'left', cursor: 'pointer', border: 0 }}
+        onClick={() => setShowTracking((v) => !v)}
+      >
+        今日完成 {done}/{total}（{pct}%）· 點此查看誰還沒完成
+      </button>
+
+      {showTracking && <HomeworkTrackingPanel classId={classId} date={date} />}
 
       <GhostButton
         onClick={() =>
@@ -61,40 +96,38 @@ export function ContactPanel({ classId }: { classId: string | undefined }) {
                   <div style={{ fontSize: 11.5, color: 'var(--muted)' }}>{h.note}</div>
                 )}
               </div>
-              <button className="read-btn" onClick={() => delHw.mutate(h.id)}>
-                刪
+              <button
+                type="button"
+                className="del-btn"
+                onClick={() => delHw.mutate(h.id)}
+                aria-label={`刪除作業 ${h.text}`}
+              >
+                刪除
               </button>
             </div>
           ))
         ) : (
           <EmptyState>今天還沒有作業</EmptyState>
         )}
-        <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+        <div className="addrow">
           <input
             className="in"
-            style={{ marginTop: 0, flex: 1 }}
             value={hwText}
             onChange={(e) => setHwText(e.target.value)}
-            placeholder="例如：國語第 3 課練習"
-          />
-          <Button
-            tone="amber"
-            onClick={() => {
-              if (!hwText.trim()) return;
-              addHw.mutate(
-                { text: hwText.trim() },
-                {
-                  onSuccess: () => {
-                    setHwText('');
-                    toast('已加入作業');
-                  },
-                },
-              );
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') submitHw();
             }}
+            placeholder="新增一項作業…"
+          />
+          <button
+            type="button"
+            className="addbtn"
+            onClick={submitHw}
             disabled={addHw.isPending}
+            aria-label="新增作業"
           >
             ＋
-          </Button>
+          </button>
         </div>
       </Card>
 
@@ -105,40 +138,38 @@ export function ContactPanel({ classId }: { classId: string | undefined }) {
               <div className="nm" style={{ flex: 1 }}>
                 {b.text}
               </div>
-              <button className="read-btn" onClick={() => delBr.mutate(b.id)}>
-                刪
+              <button
+                type="button"
+                className="del-btn"
+                onClick={() => delBr.mutate(b.id)}
+                aria-label={`刪除攜帶 ${b.text}`}
+              >
+                刪除
               </button>
             </div>
           ))
         ) : (
           <EmptyState>明天不用帶特別的東西</EmptyState>
         )}
-        <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+        <div className="addrow">
           <input
             className="in"
-            style={{ marginTop: 0, flex: 1 }}
             value={brText}
             onChange={(e) => setBrText(e.target.value)}
-            placeholder="例如：水彩用具"
-          />
-          <Button
-            tone="amber"
-            onClick={() => {
-              if (!brText.trim()) return;
-              addBr.mutate(
-                { text: brText.trim() },
-                {
-                  onSuccess: () => {
-                    setBrText('');
-                    toast('已加入攜帶');
-                  },
-                },
-              );
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') submitBr();
             }}
+            placeholder="新增攜帶物品…"
+          />
+          <button
+            type="button"
+            className="addbtn"
+            onClick={submitBr}
             disabled={addBr.isPending}
+            aria-label="新增攜帶"
           >
             ＋
-          </Button>
+          </button>
         </div>
       </Card>
     </>

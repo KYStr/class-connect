@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Button, Card, EmptyState, GhostButton, Pill, useToast } from '@/ui';
+import { Button, Card, EmptyState, Pill, useToast } from '@/ui';
 import {
   useAnnouncementsWithStats,
   useCreateAnnouncement,
   useDeleteAnnouncement,
 } from '@/hooks/useAnnouncements';
+import { AnnouncementTrackingPanel } from './AnnouncementTrackingPanel';
 
 // Teacher announcements tab (SPEC 3.2 / L5).
 export function AnnouncementsPanel({ classId }: { classId: string | undefined }) {
@@ -15,6 +16,7 @@ export function AnnouncementsPanel({ classId }: { classId: string | undefined })
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [important, setImportant] = useState(false);
+  const [showTracking, setShowTracking] = useState(false);
 
   if (!classId) return <EmptyState>請先建立班級</EmptyState>;
 
@@ -39,6 +41,17 @@ export function AnnouncementsPanel({ classId }: { classId: string | undefined })
 
   return (
     <>
+      <button
+        type="button"
+        className="info a"
+        style={{ width: '100%', textAlign: 'left', cursor: 'pointer', border: 0 }}
+        onClick={() => setShowTracking((v) => !v)}
+      >
+        點此查看哪些家長還沒讀公告
+      </button>
+
+      {showTracking && <AnnouncementTrackingPanel classId={classId} />}
+
       <Card label="✏️ 新增公告">
         <input
           className="in"
@@ -81,16 +94,23 @@ export function AnnouncementsPanel({ classId }: { classId: string | undefined })
               <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
                 {a.important && <Pill tone="a">重要</Pill>}
                 <strong style={{ flex: 1 }}>{a.title}</strong>
-                <GhostButton
-                  onClick={() =>
-                    del.mutate(a.id, { onSuccess: () => toast('已刪除') })
-                  }
+                <button
+                  type="button"
+                  className="del-btn"
+                  onClick={() => del.mutate(a.id, { onSuccess: () => toast('已刪除') })}
                 >
                   刪除
-                </GhostButton>
+                </button>
               </div>
               {a.body && (
-                <div style={{ fontSize: 13, color: 'var(--ink-2)', marginTop: 4, whiteSpace: 'pre-wrap' }}>
+                <div
+                  style={{
+                    fontSize: 13,
+                    color: 'var(--ink-2)',
+                    marginTop: 4,
+                    whiteSpace: 'pre-wrap',
+                  }}
+                >
                   {a.body}
                 </div>
               )}

@@ -751,24 +751,45 @@ select.in {
   display: flex;
   gap: 8px;
   margin-top: 9px;
+  align-items: center;
 }
 .addrow .in {
   margin-top: 0;
-  height: 40px;
+  height: 44px;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 .addbtn {
-  width: 44px;
-  height: 40px;
-  flex: 0 0 auto;
+  width: 48px;
+  height: 44px;
+  flex: 0 0 48px;
   border: 0;
   border-radius: 12px;
   cursor: pointer;
   background: var(--accent-soft);
   color: #c26a1f;
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 800;
   font-family: inherit;
   transition: 0.2s;
+}
+.del-btn {
+  flex: 0 0 auto;
+  min-width: 64px;
+  height: 36px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 11px;
+  cursor: pointer;
+  background: var(--pink-soft);
+  color: #c33f4c;
+  font-size: 13px;
+  font-weight: 800;
+  font-family: inherit;
+  transition: 0.18s;
+}
+.del-btn:hover {
+  filter: brightness(0.97);
 }
 .addbtn:hover {
   background: var(--accent);
@@ -791,6 +812,50 @@ select.in {
   border: 0;
   cursor: pointer;
   background: #f4f6f8;
+  color: var(--muted);
+  font-size: 14px;
+}
+.track-block {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--line);
+}
+.track-block:first-of-type {
+  margin-top: 8px;
+}
+.track-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+  font-size: 13.5px;
+}
+.track-head span {
+  flex: 0 0 auto;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--accent);
+}
+.track-ok {
+  margin-top: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--primary-deep);
+}
+.track-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.track-chip {
+  font-size: 12px;
+  font-weight: 700;
+  color: #c33f4c;
+  background: var(--pink-soft);
+  border-radius: 999px;
+  padding: 6px 10px;
+}
   color: var(--muted);
   font-size: 14px;
   line-height: 1;
