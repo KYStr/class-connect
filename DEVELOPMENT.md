@@ -386,6 +386,44 @@ group by a.id;
 
 ---
 
+### 5.5 Feature gating & onboarding (SPEC L16/L17) — planned for P2
+
+> Goal: a new class only shows the **core 3** features; the teacher opts into the rest, one by one.
+> Onboarding tours are short, shown once, and dismissible.
+
+```sql
+-- Per-class feature switches. Row created on class creation with core-3 enabled.
+create table class_features (
+  class_id  uuid not null references classes(id) on delete cascade,
+  feature   text not null,            -- 'announcements'|'contact'|'messages'|'grades'|'growth'|'calendar'|'leave'|'consent'
+  enabled   boolean not null default false,
+  updated_at timestamptz not null default now(),
+  primary key (class_id, feature)
+);
+-- RLS: teacher of the class manages; any class member reads (parents render tabs by these flags).
+-- alter table class_features enable row level security;
+-- create policy cf_read    on class_features for select using ( is_class_member(class_id) );
+-- create policy cf_manage  on class_features for all using ( is_teacher_of(class_id) ) with check ( is_teacher_of(class_id) );
+
+-- Per-user onboarding memory (which tours/point-outs have been seen). One row per user.
+create table onboarding_state (
+  profile_id uuid primary key references profiles(id) on delete cascade,
+  seen       jsonb not null default '{}'::jsonb,   -- e.g. { "teacher_welcome": true, "grades_pointout": true }
+  updated_at timestamptz not null default now()
+);
+-- create policy ob_self on onboarding_state for all using ( profile_id = auth.uid() ) with check ( profile_id = auth.uid() );
+```
+
+- **Core 3 (always enabled, cannot disable):** `announcements`, `contact`, `messages`.
+- **Opt-in (default disabled):** `grades`, `growth`, `calendar`, `leave`, `consent`.
+- **Rendering rule:** a parent tab/entry shows only when its feature is `enabled` **AND** it has content (SPEC L2). The switch = teacher intent; L2 = data presence.
+- **Disabling hides the entry only** (never deletes data) — re-enabling restores it (golden rule 6).
+- **On class creation**, seed `class_features` with the core 3 = `true`, others = `false` (do it in the `createClass` service or a DB trigger).
+- **Onboarding**: gate tour rendering on `onboarding_state.seen[key]`; write the key on skip/finish. Keep copy ≤ 1 sentence/step; reuse existing DESIGN tokens (no new visual primitives).
+- **Services (add in P2):** `getClassFeatures(classId)`, `setClassFeature(classId, feature, enabled)`, `getOnboarding()`, `markOnboardingSeen(key)` — with contract + RLS tests.
+
+---
+
 ## 6. Permissions & privacy (RLS) — the most important section
 
 > The demo relies on frontend filtering; production MUST rely on RLS to satisfy SPEC L1 (data isolation).
@@ -796,10 +834,12 @@ Full color semantics, font roles, spacing rhythm, and motion rules are governed 
 | --- | --- | --- |
 | P0 Foundation | Vite+React+TS project, supabase client, tokens.css, UI component library (§10.2), route skeleton | empty shell runs; look matches demo |
 | P1 Accounts | schema + RLS (§5/§6), auth, teacher create-class/add-students, invite codes, parent binding | both roles can sign in; isolation tests pass |
-| P2 Core four | announcements(read), contact(check-off/stats), grades(privacy/dist), growth(timeline/book/photos) | each verified against SPEC; Realtime works |
-| P3 Admin | calendar, online leave, consent tracking, messaging | to-do linkage; two-way status sync |
+| P2 Core four + gating | announcements(read), contact(check-off/stats), grades(privacy/dist), growth(timeline/book/photos); **feature gating (§5.5): core-3 on by default, teacher toggles, parent tabs follow (SPEC L16)** | each verified against SPEC; gating + L2 both respected; Realtime works |
+| P3 Admin | calendar, online leave, consent tracking, messaging (all behind their L16 switches) | to-do linkage; two-way status sync |
 | P4 Push/PWA | Web Push, PWA install, offline reads | installable; key events push |
-| P5 Polish | motion details, empty states, i18n, a11y, performance | motion matches demo; a11y checks pass |
+| P5 Polish | onboarding tours (SPEC L17, short/once/dismissible), motion details, empty states, i18n, a11y, performance | tours ≤ 3 steps & shown once; motion matches demo; a11y checks pass |
+
+> **Ease-of-use is a first-class requirement (SPEC L16/L17).** Every feature added from P2 on must: (a) register a `class_features` flag and respect it in both apps, and (b) ship a ≤1-sentence point-out shown once when first enabled. Communicate through design first; tours are the fallback, kept minimal.
 
 ---
 
