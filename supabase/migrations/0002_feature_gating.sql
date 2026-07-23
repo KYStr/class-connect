@@ -46,3 +46,6 @@ create policy cf_manage on class_features for all
 
 -- Explicit grants (blanket grants exist from 0001, kept here for clarity on the new table).
 grant all on class_features to anon, authenticated, service_role;
+
+-- Realtime so parent tabs react when the teacher toggles a feature.
+alter publication supabase_realtime add table class_features;

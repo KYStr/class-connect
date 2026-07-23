@@ -4,9 +4,15 @@ import type { TabItem } from '@/ui';
 import { useAuth } from '@/app/AuthProvider';
 import { useMyChildren } from '@/hooks/useMyChildren';
 import { useFeatures } from '@/hooks/useFeatures';
+import { useHomework } from '@/hooks/useContact';
+import { useClassRealtime } from '@/hooks/useClassRealtime';
+import { todayIso } from '@/services/contact';
+import { ParentAnnouncements } from './ParentAnnouncements';
+import { ParentContact } from './ParentContact';
+import { ParentGrades } from './ParentGrades';
+import { ParentGrowth } from './ParentGrowth';
 
-// Parent shell (SPEC 2.1 / 3.1). Tabs follow the teacher's feature switches (SPEC L16),
-// layered with "show only if published" (SPEC L2) as each feature slice lands.
+// Parent shell (SPEC 2.1 / 3.1). Tabs follow teacher feature switches (L16) + L2 content rules.
 
 export function ParentApp() {
   const { signOut } = useAuth();
@@ -14,6 +20,17 @@ export function ParentApp() {
   const { data: children } = useMyChildren();
   const child = children?.[0];
   const { data: features } = useFeatures(child?.classId);
+  const { data: hw } = useHomework(child?.classId, todayIso(), child?.id);
+  useClassRealtime(child?.classId);
+
+  const doneCount = (hw ?? []).filter((h) => h.done).length;
+  const total = hw?.length ?? 0;
+  const pct = total === 0 ? 100 : Math.round((doneCount / total) * 100);
+
+  const safeTab =
+    (tab === 'growth' && !features?.growth) || (tab === 'grades' && !features?.grades)
+      ? 'home'
+      : tab;
 
   const tabs: TabItem[] = [
     { key: 'home', label: '首頁', icon: '🏠' },
@@ -40,28 +57,35 @@ export function ParentApp() {
             <AppBar
               variant="p"
               classLabel={`🏫 ${child ? `${child.name}的清單` : '我的清單'}`}
-              title={heads[tab] ?? '首頁'}
+              title={heads[safeTab] ?? '首頁'}
               onLogout={signOut}
             />
           </>
         }
-        tabbar={<TabBar variant="p" items={tabs} active={tab} onSelect={setTab} />}
+        tabbar={<TabBar variant="p" items={tabs} active={safeTab} onSelect={setTab} />}
       >
-        {tab === 'home' && (
+        {safeTab === 'home' && (
           <div className="body">
             <Feature
               variant="p"
               kicker="今日作業"
-              title="今天沒有作業 🎉"
-              sub="好好休息一下"
-              pct={100}
+              title={total === 0 ? '今天沒有作業 🎉' : `已完成 ${doneCount}/${total} 項`}
+              sub={total === 0 ? '好好休息一下' : '到聯絡簿打勾回報'}
+              pct={pct}
             />
             <div className="qa-grid">
-              <div className="qa">
+              <div
+                className="qa"
+                style={{ opacity: features?.calendar ? 1 : 0.45 }}
+                onClick={() => features?.calendar && undefined}
+              >
                 <div className="qa-i">📅</div>
                 <div className="qa-t">行事曆</div>
               </div>
-              <div className="qa amber">
+              <div
+                className="qa amber"
+                style={{ opacity: features?.leave ? 1 : 0.45 }}
+              >
                 <div className="qa-i">🤒</div>
                 <div className="qa-t">請假</div>
               </div>
@@ -70,39 +94,41 @@ export function ParentApp() {
                 <div className="qa-t">聯絡老師</div>
               </div>
             </div>
-            <div className="info p">☝️ P0 骨架：畫面與樣式已就緒，資料串接於 P2 完成。</div>
+            {!features?.grades && !features?.growth && (
+              <div className="info p">
+                🌱 老師之後開啟更多功能時，這裡會慢慢長出新分頁。
+              </div>
+            )}
           </div>
         )}
 
-        {tab === 'contact' && (
+        {safeTab === 'contact' && (
           <div className="body">
-            <div className="info p">✅ 完成的項目可以自己打勾，老師端會同步看到完成人數</div>
-            <div className="card">
-              <div className="lab">✍️ 今日作業</div>
-              <EmptyState>今天沒有作業 🎉</EmptyState>
-            </div>
-            <div className="card">
-              <div className="lab">🎒 明日攜帶</div>
-              <EmptyState>明天不用帶特別的東西</EmptyState>
-            </div>
+            <ParentContact classId={child?.classId} studentId={child?.id} />
           </div>
         )}
 
-        {tab === 'announcements' && (
+        {safeTab === 'announcements' && (
           <div className="body">
-            <EmptyState icon="📭">目前沒有公告</EmptyState>
+            <ParentAnnouncements classId={child?.classId} />
           </div>
         )}
 
-        {tab === 'growth' && (
+        {safeTab === 'growth' && (
           <div className="body">
-            <EmptyState icon="🌱">老師開始記錄後，這裡會長出孩子的成長時間軸</EmptyState>
+            <ParentGrowth studentId={child?.id} />
           </div>
         )}
 
-        {tab === 'grades' && (
+        {safeTab === 'grades' && (
           <div className="body">
-            <EmptyState icon="📊">老師發布成績後，這裡會顯示孩子的分數</EmptyState>
+            <ParentGrades classId={child?.classId} studentId={child?.id} />
+          </div>
+        )}
+
+        {!['home', 'contact', 'announcements', 'growth', 'grades'].includes(safeTab) && (
+          <div className="body">
+            <EmptyState>未知分頁</EmptyState>
           </div>
         )}
       </PhoneShell>

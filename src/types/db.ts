@@ -951,6 +951,19 @@ export type Database = {
       }
     }
     Functions: {
+      get_score_distribution: {
+        Args: { p_exam_id: string }
+        Returns: {
+          count: number
+          hi: number
+          lo: number
+          range: string
+        }[]
+      }
+      get_score_percentile: {
+        Args: { p_exam_id: string; p_student_id: string }
+        Returns: number
+      }
       is_class_member: { Args: { cid: string }; Returns: boolean }
       is_guardian_of: { Args: { sid: string }; Returns: boolean }
       is_teacher_of: { Args: { cid: string }; Returns: boolean }

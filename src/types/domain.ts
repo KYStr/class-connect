@@ -58,6 +58,7 @@ export interface Announcement {
   scheduledAt: string | null;
   read?: boolean; // whether the current parent has read it (joined)
   readCount?: number; // teacher-side aggregate
+  guardianCount?: number; // teacher-side: total guardians in class
 }
 
 export interface HomeworkItem {

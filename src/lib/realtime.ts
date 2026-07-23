@@ -6,7 +6,6 @@ import { supabase } from './supabase';
 const CLASS_TABLES = [
   'announcements',
   'homework_items',
-  'homework_status',
   'bring_items',
   'exams',
   'scores',
@@ -15,6 +14,7 @@ const CLASS_TABLES = [
   'consent_signatures',
   'performance_notes',
   'milestones',
+  'class_features',
 ] as const;
 
 /** Subscribe to all class-scoped tables filtered by class_id. Returns an unsubscribe fn. */

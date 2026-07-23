@@ -4,11 +4,18 @@ import type { TabItem } from '@/ui';
 import { useAuth } from '@/app/AuthProvider';
 import { useMyClasses, useRoster } from '@/hooks/useClasses';
 import { useFeatures } from '@/hooks/useFeatures';
+import { useAnnouncementsWithStats } from '@/hooks/useAnnouncements';
+import { useBring, useHomeworkCompletion } from '@/hooks/useContact';
+import { useClassRealtime } from '@/hooks/useClassRealtime';
+import { todayIso } from '@/services/contact';
 import { ClassManager } from './ClassManager';
 import { FeatureSettings } from './FeatureSettings';
+import { AnnouncementsPanel } from './AnnouncementsPanel';
+import { ContactPanel } from './ContactPanel';
+import { GradesPanel } from './GradesPanel';
+import { GrowthPanel } from './GrowthPanel';
 
-// Teacher shell (SPEC 2.2 / 3.2). Tabs follow the class feature switches (SPEC L16):
-// overview + core (announcements, contact) always; grades/growth appear once enabled; settings always.
+// Teacher shell (SPEC 2.2 / 3.2). Tabs follow class feature switches (SPEC L16).
 
 export function TeacherApp() {
   const { signOut } = useAuth();
@@ -17,7 +24,24 @@ export function TeacherApp() {
   const cls = classes?.[0];
   const { data: roster } = useRoster(cls?.id);
   const { data: features } = useFeatures(cls?.id);
+  const date = todayIso();
+  const { data: completion } = useHomeworkCompletion(cls?.id, date);
+  const { data: bring } = useBring(cls?.id, date);
+  const { data: anns } = useAnnouncementsWithStats(cls?.id);
+  useClassRealtime(cls?.id);
+
   const classSize = roster?.length ?? 0;
+  const done = completion?.done ?? 0;
+  const total = completion?.total ?? 0;
+  const pct = total === 0 ? 0 : Math.round((done / total) * 100);
+  const annCount = anns?.length ?? 0;
+  const bringCount = bring?.length ?? 0;
+
+  // If the active tab was gated off, fall back to overview.
+  const safeTab =
+    (tab === 'growth' && !features?.growth) || (tab === 'grades' && !features?.grades)
+      ? 'overview'
+      : tab;
 
   const tabs: TabItem[] = [
     { key: 'overview', label: '總覽', icon: '📋' },
@@ -46,21 +70,21 @@ export function TeacherApp() {
             <AppBar
               variant="t"
               classLabel={`👩‍🏫 導師後台 · ${cls?.name ?? '尚未建立班級'}`}
-              title={heads[tab] ?? '總覽'}
+              title={heads[safeTab] ?? '總覽'}
               onLogout={signOut}
             />
           </>
         }
-        tabbar={<TabBar variant="t" items={tabs} active={tab} onSelect={setTab} />}
+        tabbar={<TabBar variant="t" items={tabs} active={safeTab} onSelect={setTab} />}
       >
-        {tab === 'overview' && (
+        {safeTab === 'overview' && (
           <div className="body">
             <Feature
               variant="t"
               kicker="今日班級動態"
-              title="家長完成 0/0 項作業"
-              sub="0 則公告 · 0 項攜帶 · 即時更新"
-              pct={0}
+              title={`家長完成 ${done}/${total} 項作業`}
+              sub={`${annCount} 則公告 · ${bringCount} 項攜帶 · 即時更新`}
+              pct={pct}
             />
             <ClassManager />
             <div className="card">
@@ -77,19 +101,22 @@ export function TeacherApp() {
               </div>
               <div className="stat">
                 <div className="num" style={{ color: 'var(--primary)' }}>
-                  0<small>/0 項</small>
+                  {done}
+                  <small>/{total} 項</small>
                 </div>
                 <div className="k">作業家長已勾完成</div>
               </div>
               <div className="stat">
                 <div className="num">
-                  0<small> 則</small>
+                  {annCount}
+                  <small> 則</small>
                 </div>
                 <div className="k">目前公告</div>
               </div>
               <div className="stat">
                 <div className="num">
-                  0<small> 項</small>
+                  {bringCount}
+                  <small> 項</small>
                 </div>
                 <div className="k">明日攜帶</div>
               </div>
@@ -136,15 +163,29 @@ export function TeacherApp() {
           </div>
         )}
 
-        {tab === 'settings' && (
+        {safeTab === 'announcements' && (
           <div className="body">
-            <FeatureSettings classId={cls?.id} />
+            <AnnouncementsPanel classId={cls?.id} />
           </div>
         )}
-
-        {tab !== 'overview' && tab !== 'settings' && (
+        {safeTab === 'contact' && (
           <div className="body">
-            <EmptyState icon="🛠️">此分頁的功能將於後續切片依 SPEC 逐一實作</EmptyState>
+            <ContactPanel classId={cls?.id} />
+          </div>
+        )}
+        {safeTab === 'growth' && (
+          <div className="body">
+            <GrowthPanel classId={cls?.id} />
+          </div>
+        )}
+        {safeTab === 'grades' && (
+          <div className="body">
+            <GradesPanel classId={cls?.id} />
+          </div>
+        )}
+        {safeTab === 'settings' && (
+          <div className="body">
+            <FeatureSettings classId={cls?.id} />
           </div>
         )}
       </PhoneShell>
