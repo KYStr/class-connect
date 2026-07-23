@@ -862,6 +862,51 @@ select.in {
   color: #8a6a2f;
   background: #fff4df;
 }
+.tip-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.tip-text {
+  line-height: 1.45;
+}
+.tip-actions {
+  display: flex;
+  gap: 8px;
+}
+.tip-btn {
+  border: 0;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  border-radius: 999px;
+  padding: 6px 12px;
+  background: #fff;
+  color: #c26a1f;
+}
+.tip-btn.ghost {
+  background: transparent;
+  color: var(--muted);
+}
+.tip-help {
+  width: 28px;
+  height: 28px;
+  margin-bottom: 8px;
+  border: 1.5px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--accent);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+}
+.tip-help:hover {
+  border-color: var(--accent);
+  background: #fffaf3;
+}
 .del:hover {
   background: var(--pink-soft);
   color: var(--pink);

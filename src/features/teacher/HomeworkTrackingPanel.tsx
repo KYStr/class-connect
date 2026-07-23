@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Card, EmptyState, GhostButton } from '@/ui';
+import { Card, EmptyState, GhostButton, DismissibleTip } from '@/ui';
 import { listHomeworkTracking } from '@/services/contact';
 
 export function HomeworkTrackingPanel({
@@ -22,9 +22,9 @@ export function HomeworkTrackingPanel({
 
   return (
     <Card label="👀 作業完成追蹤">
-      <div className="info a" style={{ marginBottom: 8 }}>
+      <DismissibleTip storageKey="homework_tracking">
         分母是全班學生。粉紅標籤＝還沒打勾完成的學生。
-      </div>
+      </DismissibleTip>
       <GhostButton onClick={() => setHideComplete((v) => !v)}>
         {hideComplete ? '顯示已全部完成的項目' : '隱藏已全部完成的項目'}
       </GhostButton>

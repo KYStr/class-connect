@@ -10,3 +10,4 @@ export { Button, GhostButton } from './Button';
 export { EmptyState } from './EmptyState';
 export { Pill } from './Pill';
 export { ToastProvider, useToast } from './Toast';
+export { DismissibleTip } from './DismissibleTip';

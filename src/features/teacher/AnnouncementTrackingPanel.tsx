@@ -1,12 +1,11 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Card, EmptyState, GhostButton, Pill } from '@/ui';
+import { Card, EmptyState, GhostButton, Pill, DismissibleTip } from '@/ui';
 import { listAnnouncementTracking } from '@/services/announcements';
 
 export function AnnouncementTrackingPanel({ classId }: { classId: string }) {
   const [hideComplete, setHideComplete] = useState(true);
   const { data, isLoading } = useQuery({
-    // v2: student-based tracking includes `unbound` (bust any stale cache without it)
     queryKey: ['announcements', classId, 'tracking', 'v2'] as const,
     queryFn: () => listAnnouncementTracking(classId),
   });
@@ -25,12 +24,11 @@ export function AnnouncementTrackingPanel({ classId }: { classId: string }) {
 
   return (
     <Card label="👀 公告已讀追蹤">
-      <div className="info a" style={{ marginBottom: 8 }}>
-        分母是全班學生（與聯絡簿一致）。
+      <DismissibleTip storageKey="announcement_tracking">
         {unboundTotal > 0
-          ? `目前有 ${unboundTotal} 位學生尚未綁定家長，他們還看不到公告，會標成「未綁定」。`
-          : '已加入的家長未讀會列在下方。'}
-      </div>
+          ? `分母是全班學生（與聯絡簿一致）。目前有 ${unboundTotal} 位學生尚未綁定家長，他們還看不到公告，會標成「未綁定」。`
+          : '分母是全班學生（與聯絡簿一致）。已加入的家長未讀會列在下方；尚未綁定的學生會標成「未綁定」。'}
+      </DismissibleTip>
       <GhostButton onClick={() => setHideComplete((v) => !v)}>
         {hideComplete ? '顯示已全部讀完的公告' : '隱藏已全部讀完的公告'}
       </GhostButton>
