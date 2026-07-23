@@ -1,13 +1,12 @@
 // Edge Function: redeem_invite (DEVELOPMENT.md §7.2). Atomic, security-definer style.
 // Validates the invite, binds the parent to the student, marks the invite used, and ensures
-// the conversation exists. Runs with the service-role key but authenticates the caller via
-// their JWT so parent_id is trustworthy.
+// the conversation exists. Authenticates the caller via their JWT so parent_id is trustworthy.
+//
+// Implemented with plain fetch against Auth + PostgREST (no remote imports) so the isolate
+// boots instantly — importing supabase-js from a CDN cold-starts too slowly and gets killed.
 //
 // POST /functions/v1/redeem_invite  body: { code, displayName, relation? }
 // returns: { studentId, classId }
-
-// @ts-expect-error Deno remote import — resolved by the Supabase Edge runtime.
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
 
 // @ts-expect-error Deno global — available in the Edge runtime.
 const env = Deno.env;
@@ -37,15 +36,25 @@ Deno.serve(async (req: Request) => {
   const authHeader = req.headers.get('Authorization') ?? '';
   if (!authHeader) return json({ error: 'unauthorized' }, 401);
 
-  // Identify the caller from their JWT.
-  const asUser = createClient(url, anonKey, {
-    global: { headers: { Authorization: authHeader } },
+  // Service-role REST helper.
+  const rest = (path: string, init: RequestInit = {}) =>
+    fetch(`${url}/rest/v1/${path}`, {
+      ...init,
+      headers: {
+        apikey: serviceKey,
+        Authorization: `Bearer ${serviceKey}`,
+        'Content-Type': 'application/json',
+        ...(init.headers ?? {}),
+      },
+    });
+
+  // 0) Identify the caller from their JWT.
+  const userRes = await fetch(`${url}/auth/v1/user`, {
+    headers: { apikey: anonKey, Authorization: authHeader },
   });
-  const {
-    data: { user },
-    error: userErr,
-  } = await asUser.auth.getUser();
-  if (userErr || !user) return json({ error: 'unauthorized' }, 401);
+  if (!userRes.ok) return json({ error: 'unauthorized' }, 401);
+  const user = (await userRes.json()) as { id: string; email?: string };
+  if (!user?.id) return json({ error: 'unauthorized' }, 401);
 
   let body: { code?: string; displayName?: string; relation?: string };
   try {
@@ -57,61 +66,67 @@ Deno.serve(async (req: Request) => {
   const displayName = (body.displayName ?? '').trim();
   if (!code) return json({ error: 'missing_code' }, 400);
 
-  const admin = createClient(url, serviceKey);
-
-  // 1) Validate invite: exists, not used, not expired, has a student.
-  const { data: invite, error: invErr } = await admin
-    .from('invites')
-    .select('id, class_id, student_id, used_at, expires_at')
-    .eq('code', code)
-    .maybeSingle();
-  if (invErr) return json({ error: 'lookup_failed' }, 500);
+  // 1) Validate invite.
+  const invRes = await rest(
+    `invites?code=eq.${encodeURIComponent(code)}&select=id,class_id,student_id,used_at,expires_at`,
+  );
+  if (!invRes.ok) return json({ error: 'lookup_failed' }, 500);
+  const invite = ((await invRes.json()) as Array<{
+    id: string;
+    class_id: string;
+    student_id: string | null;
+    used_at: string | null;
+    expires_at: string | null;
+  }>)[0];
   if (!invite) return json({ error: 'invalid_code' }, 404);
   if (invite.used_at) return json({ error: 'code_used' }, 409);
   if (invite.expires_at && new Date(invite.expires_at) < new Date())
     return json({ error: 'code_expired' }, 410);
   if (!invite.student_id) return json({ error: 'invite_has_no_student' }, 422);
 
-  // 2) Ensure a profile row exists WITHOUT clobbering an existing role (the signup trigger
-  //    already sets role=parent for new accounts; never downgrade an existing teacher).
-  await admin.from('profiles').upsert(
-    {
+  // 2) Ensure a profile row exists WITHOUT clobbering an existing role.
+  await rest('profiles?on_conflict=id', {
+    method: 'POST',
+    headers: { Prefer: 'resolution=ignore-duplicates,return=minimal' },
+    body: JSON.stringify({
       id: user.id,
       role: 'parent',
-      display_name: displayName || (user.email ?? 'Parent'),
-    },
-    { onConflict: 'id', ignoreDuplicates: true },
-  );
+      display_name: displayName || user.email || 'Parent',
+    }),
+  });
   if (displayName) {
-    await admin.from('profiles').update({ display_name: displayName }).eq('id', user.id);
+    await rest(`profiles?id=eq.${user.id}`, {
+      method: 'PATCH',
+      headers: { Prefer: 'return=minimal' },
+      body: JSON.stringify({ display_name: displayName }),
+    });
   }
 
   // 3) Create the guardianship (idempotent on unique (student_id, parent_id)).
-  const { error: gErr } = await admin.from('guardianships').upsert(
-    {
+  const gRes = await rest('guardianships?on_conflict=student_id,parent_id', {
+    method: 'POST',
+    headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+    body: JSON.stringify({
       student_id: invite.student_id,
       parent_id: user.id,
       relation: body.relation ?? null,
-    },
-    { onConflict: 'student_id,parent_id' },
-  );
-  if (gErr) return json({ error: 'bind_failed', detail: gErr.message }, 500);
+    }),
+  });
+  if (!gRes.ok) return json({ error: 'bind_failed', detail: await gRes.text() }, 500);
 
   // 4) Mark the invite used (guard against a race: only if still unused).
-  const { error: uErr } = await admin
-    .from('invites')
-    .update({ used_at: new Date().toISOString(), used_by: user.id })
-    .eq('id', invite.id)
-    .is('used_at', null);
-  if (uErr) return json({ error: 'mark_used_failed' }, 500);
+  await rest(`invites?id=eq.${invite.id}&used_at=is.null`, {
+    method: 'PATCH',
+    headers: { Prefer: 'return=minimal' },
+    body: JSON.stringify({ used_at: new Date().toISOString(), used_by: user.id }),
+  });
 
   // 5) Ensure a conversation row for this class+student.
-  await admin
-    .from('conversations')
-    .upsert(
-      { class_id: invite.class_id, student_id: invite.student_id },
-      { onConflict: 'class_id,student_id' },
-    );
+  await rest('conversations?on_conflict=class_id,student_id', {
+    method: 'POST',
+    headers: { Prefer: 'resolution=ignore-duplicates,return=minimal' },
+    body: JSON.stringify({ class_id: invite.class_id, student_id: invite.student_id }),
+  });
 
   return json({ studentId: invite.student_id, classId: invite.class_id });
 });

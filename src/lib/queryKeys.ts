@@ -6,6 +6,9 @@ export const queryKeys = {
     mine: () => ['classes', 'mine'] as const,
     one: (classId: string) => ['classes', classId] as const,
   },
+  features: {
+    forClass: (classId: string) => ['features', classId] as const,
+  },
   students: {
     roster: (classId: string) => ['students', 'roster', classId] as const,
     mine: () => ['students', 'mine'] as const,

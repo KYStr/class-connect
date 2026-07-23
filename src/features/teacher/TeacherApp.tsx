@@ -3,16 +3,12 @@ import { AppBar, EmptyState, Feature, PhoneShell, StatusBar, TabBar } from '@/ui
 import type { TabItem } from '@/ui';
 import { useAuth } from '@/app/AuthProvider';
 import { useMyClasses, useRoster } from '@/hooks/useClasses';
+import { useFeatures } from '@/hooks/useFeatures';
 import { ClassManager } from './ClassManager';
+import { FeatureSettings } from './FeatureSettings';
 
-// Teacher shell (SPEC 2.2 / 3.2). P0 skeleton: fixed 5 tabs + overview with to-do/stats scaffold.
-const TABS: TabItem[] = [
-  { key: 'overview', label: '總覽', icon: '📋' },
-  { key: 'announcements', label: '公告', icon: '📣' },
-  { key: 'contact', label: '聯絡簿', icon: '📒' },
-  { key: 'growth', label: '成長', icon: '🌱' },
-  { key: 'grades', label: '成績', icon: '📊' },
-];
+// Teacher shell (SPEC 2.2 / 3.2). Tabs follow the class feature switches (SPEC L16):
+// overview + core (announcements, contact) always; grades/growth appear once enabled; settings always.
 
 export function TeacherApp() {
   const { signOut } = useAuth();
@@ -20,7 +16,17 @@ export function TeacherApp() {
   const { data: classes } = useMyClasses();
   const cls = classes?.[0];
   const { data: roster } = useRoster(cls?.id);
+  const { data: features } = useFeatures(cls?.id);
   const classSize = roster?.length ?? 0;
+
+  const tabs: TabItem[] = [
+    { key: 'overview', label: '總覽', icon: '📋' },
+    { key: 'announcements', label: '公告', icon: '📣' },
+    { key: 'contact', label: '聯絡簿', icon: '📒' },
+    ...(features?.growth ? [{ key: 'growth', label: '成長', icon: '🌱' } as TabItem] : []),
+    ...(features?.grades ? [{ key: 'grades', label: '成績', icon: '📊' } as TabItem] : []),
+    { key: 'settings', label: '設定', icon: '⚙️' },
+  ];
 
   const heads: Record<string, string> = {
     overview: '後台總覽',
@@ -28,6 +34,7 @@ export function TeacherApp() {
     contact: '今日聯絡簿',
     growth: '記錄孩子的成長',
     grades: '登錄成績',
+    settings: '設定 / 更多功能',
   };
 
   return (
@@ -44,7 +51,7 @@ export function TeacherApp() {
             />
           </>
         }
-        tabbar={<TabBar variant="t" items={TABS} active={tab} onSelect={setTab} />}
+        tabbar={<TabBar variant="t" items={tabs} active={tab} onSelect={setTab} />}
       >
         {tab === 'overview' && (
           <div className="body">
@@ -102,28 +109,42 @@ export function TeacherApp() {
                 <div className="qt">寫聯絡簿</div>
                 <div className="qs">作業/攜帶</div>
               </div>
-              <div className="q" onClick={() => setTab('growth')}>
+              <div
+                className="q"
+                onClick={() => setTab(features?.growth ? 'growth' : 'settings')}
+              >
                 <div className="qi" style={{ background: 'var(--blue-soft)' }}>
                   📸
                 </div>
                 <div className="qt">記成長</div>
-                <div className="qs">文字/照片</div>
+                <div className="qs">{features?.growth ? '文字/照片' : '前往開啟'}</div>
               </div>
-              <div className="q" onClick={() => setTab('grades')}>
+              <div
+                className="q"
+                onClick={() => setTab(features?.grades ? 'grades' : 'settings')}
+              >
                 <div className="qi" style={{ background: 'var(--pink-soft)' }}>
                   📊
                 </div>
                 <div className="qt">登成績</div>
-                <div className="qs">分數/級距</div>
+                <div className="qs">{features?.grades ? '分數/級距' : '前往開啟'}</div>
               </div>
             </div>
-            <div className="info a">☝️ P0 骨架：後台樣式已就緒，資料與發布流程於 P2/P3 完成。</div>
+            <div className="info a">
+              💡 目前只開了最核心的功能。到「設定」可逐一開啟成績、成長、行事曆等更多功能。
+            </div>
           </div>
         )}
 
-        {tab !== 'overview' && (
+        {tab === 'settings' && (
           <div className="body">
-            <EmptyState icon="🛠️">此分頁的功能將於 P2/P3 依 SPEC 逐一實作</EmptyState>
+            <FeatureSettings classId={cls?.id} />
+          </div>
+        )}
+
+        {tab !== 'overview' && tab !== 'settings' && (
+          <div className="body">
+            <EmptyState icon="🛠️">此分頁的功能將於後續切片依 SPEC 逐一實作</EmptyState>
           </div>
         )}
       </PhoneShell>

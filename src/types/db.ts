@@ -135,6 +135,35 @@ export type Database = {
           },
         ]
       }
+      class_features: {
+        Row: {
+          class_id: string
+          enabled: boolean
+          feature: string
+          updated_at: string
+        }
+        Insert: {
+          class_id: string
+          enabled?: boolean
+          feature: string
+          updated_at?: string
+        }
+        Update: {
+          class_id?: string
+          enabled?: boolean
+          feature?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "class_features_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       classes: {
         Row: {
           created_at: string
@@ -925,6 +954,7 @@ export type Database = {
       is_class_member: { Args: { cid: string }; Returns: boolean }
       is_guardian_of: { Args: { sid: string }; Returns: boolean }
       is_teacher_of: { Args: { cid: string }; Returns: boolean }
+      seed_class_features: { Args: { cid: string }; Returns: undefined }
     }
     Enums: {
       event_type_t: "exam" | "activity" | "fee" | "holiday"

@@ -3,25 +3,32 @@ import { AppBar, EmptyState, Feature, PhoneShell, StatusBar, TabBar } from '@/ui
 import type { TabItem } from '@/ui';
 import { useAuth } from '@/app/AuthProvider';
 import { useMyChildren } from '@/hooks/useMyChildren';
+import { useFeatures } from '@/hooks/useFeatures';
 
-// Parent shell (SPEC 2.1 / 3.1). P0 skeleton: dynamic tabs + empty states, no backend data yet.
-// Tabs 成長/成績 appear only when data exists (SPEC L2) — hidden here until services land (P2).
-const BASE_TABS: TabItem[] = [
-  { key: 'home', label: '首頁', icon: '🏠' },
-  { key: 'contact', label: '聯絡簿', icon: '📒' },
-  { key: 'announcements', label: '公告', icon: '📣' },
-];
+// Parent shell (SPEC 2.1 / 3.1). Tabs follow the teacher's feature switches (SPEC L16),
+// layered with "show only if published" (SPEC L2) as each feature slice lands.
 
 export function ParentApp() {
   const { signOut } = useAuth();
   const [tab, setTab] = useState('home');
   const { data: children } = useMyChildren();
   const child = children?.[0];
+  const { data: features } = useFeatures(child?.classId);
+
+  const tabs: TabItem[] = [
+    { key: 'home', label: '首頁', icon: '🏠' },
+    { key: 'contact', label: '聯絡簿', icon: '📒' },
+    { key: 'announcements', label: '公告', icon: '📣' },
+    ...(features?.growth ? [{ key: 'growth', label: '成長', icon: '🌱' } as TabItem] : []),
+    ...(features?.grades ? [{ key: 'grades', label: '成績', icon: '📊' } as TabItem] : []),
+  ];
 
   const heads: Record<string, string> = {
     home: '今天',
     contact: '聯絡簿',
     announcements: '班級公告',
+    growth: '成長',
+    grades: '成績',
   };
 
   return (
@@ -38,7 +45,7 @@ export function ParentApp() {
             />
           </>
         }
-        tabbar={<TabBar variant="p" items={BASE_TABS} active={tab} onSelect={setTab} />}
+        tabbar={<TabBar variant="p" items={tabs} active={tab} onSelect={setTab} />}
       >
         {tab === 'home' && (
           <div className="body">
@@ -84,6 +91,18 @@ export function ParentApp() {
         {tab === 'announcements' && (
           <div className="body">
             <EmptyState icon="📭">目前沒有公告</EmptyState>
+          </div>
+        )}
+
+        {tab === 'growth' && (
+          <div className="body">
+            <EmptyState icon="🌱">老師開始記錄後，這裡會長出孩子的成長時間軸</EmptyState>
+          </div>
+        )}
+
+        {tab === 'grades' && (
+          <div className="body">
+            <EmptyState icon="📊">老師發布成績後，這裡會顯示孩子的分數</EmptyState>
           </div>
         )}
       </PhoneShell>
