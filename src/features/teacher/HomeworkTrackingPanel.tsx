@@ -22,6 +22,9 @@ export function HomeworkTrackingPanel({
 
   return (
     <Card label="👀 作業完成追蹤">
+      <div className="info a" style={{ marginBottom: 8 }}>
+        分母是全班學生。粉紅標籤＝還沒打勾完成的學生。
+      </div>
       <GhostButton onClick={() => setHideComplete((v) => !v)}>
         {hideComplete ? '顯示已全部完成的項目' : '隱藏已全部完成的項目'}
       </GhostButton>
@@ -35,7 +38,7 @@ export function HomeworkTrackingPanel({
             <div className="track-head">
               <strong>{row.text}</strong>
               <span>
-                {row.doneCount}/{row.totalCount}
+                {row.doneCount}/{row.totalCount} 位學生
               </span>
             </div>
             {row.incomplete.length === 0 ? (

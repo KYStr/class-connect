@@ -115,7 +115,8 @@ export function AnnouncementsPanel({ classId }: { classId: string | undefined })
                 </div>
               )}
               <div style={{ fontSize: 11.5, color: 'var(--muted)', marginTop: 6 }}>
-                已讀 {a.readCount ?? 0}/{a.guardianCount ?? 0} ·{' '}
+                家長已讀 {a.readCount ?? 0}/{a.guardianCount ?? 0}
+                {a.guardianCount === 0 ? '（尚無家長加入）' : ''} ·{' '}
                 {new Date(a.publishedAt).toLocaleString('zh-TW', {
                   month: 'numeric',
                   day: 'numeric',

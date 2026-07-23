@@ -858,6 +858,10 @@ select.in {
   border-radius: 999px;
   padding: 6px 10px;
 }
+.track-chip.muted {
+  color: #8a6a2f;
+  background: #fff4df;
+}
 .del:hover {
   background: var(--pink-soft);
   color: var(--pink);

@@ -121,8 +121,11 @@ export interface AnnouncementTrackItem {
   announcementId: string;
   title: string;
   important: boolean;
+  /** Students whose family has read (at least one bound parent read). */
   readCount: number;
+  /** All students in the class (same denominator idea as homework tracking). */
   totalCount: number;
+  /** Bound parents who have not read yet. */
   unread: {
     parentId: string;
     parentName: string;
@@ -131,9 +134,15 @@ export interface AnnouncementTrackItem {
     studentName: string;
     relation: string | null;
   }[];
+  /** Students with no bound parent yet — they cannot read until they join. */
+  unbound: {
+    studentId: string;
+    seat: string;
+    name: string;
+  }[];
 }
 
-/** Per-announcement unread guardians for teacher attention tracking. */
+/** Per-announcement attention list for teachers (student-based, aligned with homework). */
 export async function listAnnouncementTracking(
   classId: string,
 ): Promise<AnnouncementTrackItem[]> {
@@ -144,7 +153,7 @@ export async function listAnnouncementTracking(
       .eq('class_id', classId)
       .lte('published_at', new Date().toISOString())
       .order('published_at', { ascending: false }),
-    supabase.from('students').select('id, seat, name').eq('class_id', classId),
+    supabase.from('students').select('id, seat, name').eq('class_id', classId).order('seat'),
   ]);
   if (aErr) throw aErr;
   if (stErr) throw stErr;
@@ -182,7 +191,12 @@ export async function listAnnouncementTracking(
       p.display_name,
     ]),
   );
-  const studentById = new Map(studentRows.map((s) => [s.id, s]));
+  const guardsByStudent = new Map<string, typeof guardRows>();
+  for (const g of guardRows) {
+    const arr = guardsByStudent.get(g.student_id) ?? [];
+    arr.push(g);
+    guardsByStudent.set(g.student_id, arr);
+  }
 
   const { data: reads, error: rErr } = await supabase
     .from('announcement_reads')
@@ -197,26 +211,41 @@ export async function listAnnouncementTracking(
   );
 
   return annRows.map((a) => {
-    const unread = guardRows
-      .filter((g) => !readSet.has(`${a.id}:${g.parent_id}`))
-      .map((g) => {
-        const s = studentById.get(g.student_id);
-        return {
-          parentId: g.parent_id,
-          parentName: parentName.get(g.parent_id) ?? '家長',
-          studentId: g.student_id,
-          studentSeat: s?.seat ?? '',
-          studentName: s?.name ?? '',
-          relation: g.relation,
-        };
-      });
+    const unbound: AnnouncementTrackItem['unbound'] = [];
+    const unread: AnnouncementTrackItem['unread'] = [];
+    let readCount = 0;
+
+    for (const s of studentRows) {
+      const gs = guardsByStudent.get(s.id) ?? [];
+      if (gs.length === 0) {
+        unbound.push({ studentId: s.id, seat: s.seat, name: s.name });
+        continue;
+      }
+      const anyRead = gs.some((g) => readSet.has(`${a.id}:${g.parent_id}`));
+      if (anyRead) {
+        readCount += 1;
+      } else {
+        for (const g of gs) {
+          unread.push({
+            parentId: g.parent_id,
+            parentName: parentName.get(g.parent_id) ?? '家長',
+            studentId: g.student_id,
+            studentSeat: s.seat,
+            studentName: s.name,
+            relation: g.relation,
+          });
+        }
+      }
+    }
+
     return {
       announcementId: a.id,
       title: a.title,
       important: a.important,
-      readCount: guardRows.length - unread.length,
-      totalCount: guardRows.length,
+      readCount,
+      totalCount: studentRows.length,
       unread,
+      unbound,
     };
   });
 }
