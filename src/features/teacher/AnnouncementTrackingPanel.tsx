@@ -6,12 +6,18 @@ import { listAnnouncementTracking } from '@/services/announcements';
 export function AnnouncementTrackingPanel({ classId }: { classId: string }) {
   const [hideComplete, setHideComplete] = useState(true);
   const { data, isLoading } = useQuery({
-    queryKey: ['announcements', classId, 'tracking'] as const,
+    // v2: student-based tracking includes `unbound` (bust any stale cache without it)
+    queryKey: ['announcements', classId, 'tracking', 'v2'] as const,
     queryFn: () => listAnnouncementTracking(classId),
   });
 
   if (isLoading) return <EmptyState>載入追蹤中…</EmptyState>;
-  const rows = data ?? [];
+
+  const rows = (data ?? []).map((r) => ({
+    ...r,
+    unread: r.unread ?? [],
+    unbound: r.unbound ?? [],
+  }));
   const visible = hideComplete
     ? rows.filter((r) => r.unread.length > 0 || r.unbound.length > 0)
     : rows;
@@ -63,7 +69,10 @@ export function AnnouncementTrackingPanel({ classId }: { classId: string }) {
                 {row.unbound.length > 0 && (
                   <div className="track-list">
                     {row.unbound.map((s) => (
-                      <div key={`${row.announcementId}-u-${s.studentId}`} className="track-chip muted">
+                      <div
+                        key={`${row.announcementId}-u-${s.studentId}`}
+                        className="track-chip muted"
+                      >
                         {s.seat} {s.name} · 未綁定家長
                       </div>
                     ))}
