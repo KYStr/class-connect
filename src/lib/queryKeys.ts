@@ -52,5 +52,6 @@ export const queryKeys = {
     conversation: (classId: string, studentId: string) =>
       ['messages', 'conversation', classId, studentId] as const,
     list: (conversationId: string) => ['messages', 'list', conversationId] as const,
+    inbox: (classId: string) => ['messages', 'inbox', classId] as const,
   },
 } as const;

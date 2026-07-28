@@ -11,7 +11,7 @@ const CLASS_TABLES = [
   'scores',
   'events',
   'leaves',
-  'consent_signatures',
+  'consent_forms',
   'performance_notes',
   'milestones',
   'class_features',

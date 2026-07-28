@@ -128,6 +128,7 @@ export interface Leave {
 export interface ConsentForm {
   id: string;
   title: string;
+  body?: string | null;
   deadline: string | null;
 }
 

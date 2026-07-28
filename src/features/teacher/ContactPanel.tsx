@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, EmptyState, GhostButton, useToast } from '@/ui';
 import {
   useAddBring,
@@ -14,7 +14,13 @@ import { todayIso } from '@/services/contact';
 import { HomeworkTrackingPanel } from './HomeworkTrackingPanel';
 
 // Teacher contact-book tab (SPEC 3.2 / L3 / L11).
-export function ContactPanel({ classId }: { classId: string | undefined }) {
+export function ContactPanel({
+  classId,
+  openTracking = false,
+}: {
+  classId: string | undefined;
+  openTracking?: boolean;
+}) {
   const { toast } = useToast();
   const date = todayIso();
   const { data: hw } = useHomework(classId, date);
@@ -27,7 +33,11 @@ export function ContactPanel({ classId }: { classId: string | undefined }) {
   const copy = useCopyYesterday(classId, date);
   const [hwText, setHwText] = useState('');
   const [brText, setBrText] = useState('');
-  const [showTracking, setShowTracking] = useState(false);
+  const [showTracking, setShowTracking] = useState(openTracking);
+
+  useEffect(() => {
+    if (openTracking) setShowTracking(true);
+  }, [openTracking]);
 
   if (!classId) return <EmptyState>請先建立班級</EmptyState>;
 

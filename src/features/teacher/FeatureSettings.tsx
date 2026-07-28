@@ -1,5 +1,6 @@
 import { Card, EmptyState, useToast } from '@/ui';
 import { useFeatures, useSetFeature } from '@/hooks/useFeatures';
+import { useEnablePush, useDisablePush } from '@/hooks/usePush';
 import { CORE_FEATURES, OPT_IN_FEATURES, type FeatureKey } from '@/types/domain';
 
 // Teacher "⚙️ 設定 / 更多功能" (SPEC L16). Core-3 are locked on; the rest are opt-in.
@@ -17,6 +18,8 @@ const META: Record<FeatureKey, { icon: string; name: string; desc: string }> = {
 export function FeatureSettings({ classId }: { classId: string | undefined }) {
   const { data: features, isLoading } = useFeatures(classId);
   const setFeature = useSetFeature(classId);
+  const enablePush = useEnablePush();
+  const disablePush = useDisablePush();
   const { toast } = useToast();
 
   if (!classId) return <EmptyState>請先建立班級</EmptyState>;
@@ -26,8 +29,15 @@ export function FeatureSettings({ classId }: { classId: string | undefined }) {
     setFeature.mutate(
       { feature, enabled },
       {
-        onSuccess: () =>
-          toast(enabled ? `已開啟「${META[feature].name}」` : `已關閉「${META[feature].name}」`),
+        onSuccess: () => {
+          if (enabled && (feature === 'growth' || feature === 'grades')) {
+            toast(`已開啟「${META[feature].name}」· 底部已出現新分頁`);
+          } else if (enabled) {
+            toast(`已開啟「${META[feature].name}」· 入口已可使用`);
+          } else {
+            toast(`已關閉「${META[feature].name}」`);
+          }
+        },
       },
     );
   };
@@ -37,6 +47,45 @@ export function FeatureSettings({ classId }: { classId: string | undefined }) {
       <div className="info a">
         ☝️ 一開始只開最核心的功能，降低負擔。想用更多功能時再逐一開啟即可，家長端會同步長出。
       </div>
+
+      <Card label="🔔 裝置通知">
+        <div className="toggle-row">
+          <div className="tx">
+            Web Push
+            <small>重要公告、請假結果、私訊會推到這台裝置</small>
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              type="button"
+              className="ghost-btn"
+              style={{ width: 'auto', padding: '6px 12px' }}
+              disabled={enablePush.isPending}
+              onClick={() =>
+                enablePush.mutate(undefined, {
+                  onSuccess: (r) =>
+                    toast(r === 'granted' ? '已開啟通知' : '未允許通知權限'),
+                  onError: (e) => toast(e instanceof Error ? e.message : '開啟失敗'),
+                })
+              }
+            >
+              開啟
+            </button>
+            <button
+              type="button"
+              className="ghost-btn"
+              style={{ width: 'auto', padding: '6px 12px' }}
+              disabled={disablePush.isPending}
+              onClick={() =>
+                disablePush.mutate(undefined, {
+                  onSuccess: () => toast('已關閉此裝置通知'),
+                })
+              }
+            >
+              關閉
+            </button>
+          </div>
+        </div>
+      </Card>
 
       <Card label="🔒 核心功能（永遠開啟）">
         {CORE_FEATURES.map((f) => (

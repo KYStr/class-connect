@@ -32,6 +32,15 @@ export function useClassRealtime(classId: string | undefined) {
         case 'class_features':
           qc.invalidateQueries({ queryKey: queryKeys.features.forClass(classId) });
           break;
+        case 'events':
+          qc.invalidateQueries({ queryKey: queryKeys.calendar.events(classId) });
+          break;
+        case 'leaves':
+          qc.invalidateQueries({ queryKey: ['leaves'] });
+          break;
+        case 'consent_forms':
+          qc.invalidateQueries({ queryKey: ['consent'] });
+          break;
         default:
           break;
       }

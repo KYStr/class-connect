@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import type { DistBucket, Exam, Student } from '@/types/domain';
+import { listClassGuardianIds, notifyProfiles } from '@/services/push';
 
 // DEVELOPMENT.md §8.2 / §8.3. Privacy per SPEC L4 is enforced by RLS + de-identified dist.
 
@@ -107,7 +108,15 @@ export async function upsertExam(input: {
   published: boolean;
   showDist: boolean;
 }): Promise<Exam> {
+  let wasPublished = false;
   if (input.id) {
+    const { data: prev } = await supabase
+      .from('exams')
+      .select('published')
+      .eq('id', input.id)
+      .maybeSingle();
+    wasPublished = Boolean(prev?.published);
+
     const { data, error } = await supabase
       .from('exams')
       .update({
@@ -119,7 +128,20 @@ export async function upsertExam(input: {
       .select('id, class_id, name, published, show_dist')
       .single();
     if (error) throw error;
-    return toExam(data as ExamRow);
+    const exam = toExam(data as ExamRow);
+    if (input.published && !wasPublished) {
+      void listClassGuardianIds(input.classId)
+        .then((profileIds) =>
+          notifyProfiles({
+            profileIds,
+            title: '📊 成績已公布',
+            body: input.name,
+            url: '/p',
+          }),
+        )
+        .catch(() => undefined);
+    }
+    return exam;
   }
   const { data, error } = await supabase
     .from('exams')
@@ -132,7 +154,20 @@ export async function upsertExam(input: {
     .select('id, class_id, name, published, show_dist')
     .single();
   if (error) throw error;
-  return toExam(data as ExamRow);
+  const exam = toExam(data as ExamRow);
+  if (input.published) {
+    void listClassGuardianIds(input.classId)
+      .then((profileIds) =>
+        notifyProfiles({
+          profileIds,
+          title: '📊 成績已公布',
+          body: input.name,
+          url: '/p',
+        }),
+      )
+      .catch(() => undefined);
+  }
+  return exam;
 }
 
 export async function setScore(

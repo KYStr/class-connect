@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button, Card, EmptyState, Pill, useToast } from '@/ui';
 import {
   useAnnouncementsWithStats,
@@ -8,7 +8,13 @@ import {
 import { AnnouncementTrackingPanel } from './AnnouncementTrackingPanel';
 
 // Teacher announcements tab (SPEC 3.2 / L5).
-export function AnnouncementsPanel({ classId }: { classId: string | undefined }) {
+export function AnnouncementsPanel({
+  classId,
+  openTracking = false,
+}: {
+  classId: string | undefined;
+  openTracking?: boolean;
+}) {
   const { toast } = useToast();
   const { data: list, isLoading } = useAnnouncementsWithStats(classId);
   const create = useCreateAnnouncement(classId);
@@ -16,7 +22,11 @@ export function AnnouncementsPanel({ classId }: { classId: string | undefined })
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [important, setImportant] = useState(false);
-  const [showTracking, setShowTracking] = useState(false);
+  const [showTracking, setShowTracking] = useState(openTracking);
+
+  useEffect(() => {
+    if (openTracking) setShowTracking(true);
+  }, [openTracking]);
 
   if (!classId) return <EmptyState>請先建立班級</EmptyState>;
 

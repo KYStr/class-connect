@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import type { Announcement } from '@/types/domain';
+import { listClassGuardianIds, notifyProfiles } from '@/services/push';
 
 // DEVELOPMENT.md §8.2 / §8.3. RLS: is_class_member reads; is_teacher_of writes (SPEC L5).
 
@@ -96,7 +97,19 @@ export async function createAnnouncement(input: {
     .select('id, class_id, title, body, important, published_at, scheduled_at')
     .single();
   if (error) throw error;
-  return toAnnouncement(data as AnnRow);
+  const ann = toAnnouncement(data as AnnRow);
+  // Fire-and-forget push (important announcements prioritized in copy).
+  void listClassGuardianIds(input.classId)
+    .then((profileIds) =>
+      notifyProfiles({
+        profileIds,
+        title: input.important ? '📣 重要公告' : '📣 新公告',
+        body: input.title,
+        url: '/p',
+      }),
+    )
+    .catch(() => undefined);
+  return ann;
 }
 
 export async function deleteAnnouncement(id: string): Promise<void> {
