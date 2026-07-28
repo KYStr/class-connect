@@ -67,6 +67,19 @@ export async function disablePushNotifications(): Promise<void> {
   await sub.unsubscribe();
 }
 
+/** Send one notification to the current user (desktop Chrome is enough to verify). */
+export async function sendTestPushToSelf(): Promise<{ sent: number }> {
+  const { data } = await supabase.auth.getUser();
+  const id = data.user?.id;
+  if (!id) throw new Error('Not authenticated');
+  return notifyProfiles({
+    profileIds: [id],
+    title: '班級連 · 測試通知',
+    body: '若你看到這則，推播已設定成功（電腦瀏覽器即可測，不必接手機）。',
+    url: '/',
+  });
+}
+
 /** Invoke Edge Function send_push (service or user JWT). */
 export async function notifyProfiles(input: {
   profileIds: string[];

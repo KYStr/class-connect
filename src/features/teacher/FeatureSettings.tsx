@@ -1,6 +1,8 @@
+import { useMutation } from '@tanstack/react-query';
 import { Card, EmptyState, useToast } from '@/ui';
 import { useFeatures, useSetFeature } from '@/hooks/useFeatures';
 import { useEnablePush, useDisablePush } from '@/hooks/usePush';
+import { sendTestPushToSelf } from '@/services/push';
 import { CORE_FEATURES, OPT_IN_FEATURES, type FeatureKey } from '@/types/domain';
 
 // Teacher "⚙️ 設定 / 更多功能" (SPEC L16). Core-3 are locked on; the rest are opt-in.
@@ -20,6 +22,7 @@ export function FeatureSettings({ classId }: { classId: string | undefined }) {
   const setFeature = useSetFeature(classId);
   const enablePush = useEnablePush();
   const disablePush = useDisablePush();
+  const testPush = useMutation({ mutationFn: sendTestPushToSelf });
   const { toast } = useToast();
 
   if (!classId) return <EmptyState>請先建立班級</EmptyState>;
@@ -82,6 +85,25 @@ export function FeatureSettings({ classId }: { classId: string | undefined }) {
               }
             >
               關閉
+            </button>
+            <button
+              type="button"
+              className="ghost-btn"
+              style={{ width: 'auto', padding: '6px 12px' }}
+              disabled={testPush.isPending}
+              onClick={() =>
+                testPush.mutate(undefined, {
+                  onSuccess: (r) =>
+                    toast(
+                      r.sent > 0
+                        ? '已送出測試通知 · 請看系統通知列（可先切到別的分頁）'
+                        : '沒有訂閱紀錄 · 請先按「開啟」並允許通知',
+                    ),
+                  onError: (e) => toast(e instanceof Error ? e.message : '測試失敗'),
+                })
+              }
+            >
+              測試
             </button>
           </div>
         </div>
