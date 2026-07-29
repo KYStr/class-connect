@@ -27,8 +27,12 @@ file_size_limit = "50MiB"
 
 [auth]
 enabled = true
-site_url = "http://localhost:5173"
-additional_redirect_urls = ["http://localhost:5173"]
+# Staging front-end (Cloudflare Workers). Keep localhost for local Vite.
+site_url = "https://class-connect.s105056008.workers.dev"
+additional_redirect_urls = [
+  "https://class-connect.s105056008.workers.dev",
+  "http://localhost:5173",
+]
 jwt_expiry = 3600
 enable_signup = true
 
