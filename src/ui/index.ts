@@ -5,7 +5,7 @@ export { Feature } from './Feature';
 export { AppBar } from './AppBar';
 export { TabBar } from './TabBar';
 export type { TabItem } from './TabBar';
-export { PhoneShell, StatusBar } from './PhoneShell';
+export { PhoneShell, StatusBar, TAB_SLIDE_MS } from './PhoneShell';
 export type { SlideDir } from './PhoneShell';
 export { Button, GhostButton } from './Button';
 export { EmptyState } from './EmptyState';

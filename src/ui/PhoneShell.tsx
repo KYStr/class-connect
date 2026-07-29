@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 
 export type SlideDir = 'left' | 'right' | null;
 
@@ -41,7 +41,7 @@ export function StatusBar() {
   );
 }
 
-const SLIDE_MS = 280;
+export const TAB_SLIDE_MS = 280;
 
 // Product shell: mobile-first UI without a fake phone chrome (DEVELOPMENT.md §10.2).
 export function PhoneShell({
@@ -59,33 +59,49 @@ export function PhoneShell({
   const prevKids = useRef(children);
   const [outgoing, setOutgoing] = useState<ReactNode>(null);
   const [outgoingDir, setOutgoingDir] = useState<SlideDir>(null);
+  /** Direction applied only for the entering page's animation (cleared after slide). */
+  const [enterDir, setEnterDir] = useState<SlideDir>(null);
 
+  // Keep latest children without restarting the slide timeout on every render.
   useLayoutEffect(() => {
     if (contentKey === prevKey.current) {
       prevKids.current = children;
-      return;
     }
-    if (slideDir) {
-      setOutgoing(prevKids.current);
-      setOutgoingDir(slideDir);
-      const t = window.setTimeout(() => {
-        setOutgoing(null);
-        setOutgoingDir(null);
-      }, SLIDE_MS);
-      prevKey.current = contentKey;
-      prevKids.current = children;
-      return () => window.clearTimeout(t);
-    }
+  }, [children, contentKey]);
+
+  useLayoutEffect(() => {
+    if (contentKey === prevKey.current) return;
+
+    const leaving = prevKids.current;
     prevKey.current = contentKey;
     prevKids.current = children;
-    setOutgoing(null);
-    setOutgoingDir(null);
-  }, [contentKey, children, slideDir]);
+
+    if (slideDir) {
+      setOutgoing(leaving);
+      setOutgoingDir(slideDir);
+      setEnterDir(slideDir);
+    } else {
+      setOutgoing(null);
+      setOutgoingDir(null);
+      setEnterDir(null);
+    }
+  }, [contentKey, slideDir, children]);
+
+  // Timeout lives in its own effect so child re-renders during the slide cannot cancel it.
+  useEffect(() => {
+    if (!outgoing && !enterDir) return;
+    const t = window.setTimeout(() => {
+      setOutgoing(null);
+      setOutgoingDir(null);
+      setEnterDir(null);
+    }, TAB_SLIDE_MS);
+    return () => window.clearTimeout(t);
+  }, [outgoing, enterDir, contentKey]);
 
   const inClass =
-    slideDir === 'right'
+    enterDir === 'right'
       ? 'page-slide-in-right'
-      : slideDir === 'left'
+      : enterDir === 'left'
         ? 'page-slide-in-left'
         : animate
           ? 'page-anim'

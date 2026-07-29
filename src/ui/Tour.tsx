@@ -1,5 +1,6 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { TAB_SLIDE_MS } from './PhoneShell';
 
 export interface TourStep {
   /** ≤ 1 sentence (SPEC L17). */
@@ -79,6 +80,7 @@ export function Tour({
   const [index, setIndex] = useState(0);
   const [spot, setSpot] = useState<Spot | null>(null);
   const [host, setHost] = useState<HTMLElement | null>(null);
+  const [settled, setSettled] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -100,15 +102,20 @@ export function Tour({
 
   const step = steps[Math.min(index, Math.max(0, steps.length - 1))];
 
-  // Navigate / focus when step changes.
+  // Navigate first; wait for tab slide to finish before measuring spotlight.
   useEffect(() => {
     if (!open || !step) return;
+    setSettled(false);
+    setSpot(null);
     step.onEnter?.();
+    const delay = step.onEnter ? TAB_SLIDE_MS + 40 : 0;
+    const t = window.setTimeout(() => setSettled(true), delay);
+    return () => window.clearTimeout(t);
   }, [open, index, step]);
 
   useLayoutEffect(() => {
-    if (!open || !step) {
-      setSpot(null);
+    if (!open || !step || !settled) {
+      if (!open) setSpot(null);
       return;
     }
 
@@ -127,8 +134,7 @@ export function Tour({
     };
 
     run();
-    const t1 = window.setTimeout(run, 80);
-    const t2 = window.setTimeout(run, 220);
+    const t1 = window.setTimeout(run, 40);
     const raf = requestAnimationFrame(() => requestAnimationFrame(run));
 
     scroll?.addEventListener('scroll', run, { passive: true });
@@ -136,18 +142,17 @@ export function Tour({
     return () => {
       cancelled = true;
       window.clearTimeout(t1);
-      window.clearTimeout(t2);
       cancelAnimationFrame(raf);
       scroll?.removeEventListener('scroll', run);
       window.removeEventListener('resize', run);
     };
-  }, [open, step, index]);
+  }, [open, step, index, settled]);
 
   if (!open || steps.length === 0 || !host) return null;
 
   const last = index >= steps.length - 1;
   const first = index <= 0;
-  const hasTarget = Boolean(step?.target && spot);
+  const hasTarget = Boolean(step?.target && spot && settled);
 
   const goPrev = () => setIndex((i) => Math.max(0, i - 1));
   const goNext = () => {
