@@ -6,10 +6,12 @@ export function ParentMessages({
   classId,
   studentId,
   onBack,
+  preview = false,
 }: {
   classId: string | undefined;
   studentId: string | undefined;
   onBack: () => void;
+  preview?: boolean;
 }) {
   const { toast } = useToast();
   const { data: conv, isLoading: loadingConv } = useConversation(classId, studentId);
@@ -28,6 +30,10 @@ export function ParentMessages({
   if (!conv) return <EmptyState>無法開啟對話</EmptyState>;
 
   const onSend = () => {
+    if (preview) {
+      toast('預覽模式不可傳訊');
+      return;
+    }
     if (!text.trim()) return;
     send.mutate(text, {
       onSuccess: () => setText(''),
@@ -40,7 +46,9 @@ export function ParentMessages({
       <div className="chat-page-top">
         <GhostButton onClick={onBack}>← 返回首頁</GhostButton>
         <div className="chat-note">
-          🔕 回覆時間 {conv.officeHours} · 私訊僅雙方可見
+          {preview
+            ? '👁 預覽私訊畫面（不可傳送）'
+            : `🔕 回覆時間 ${conv.officeHours} · 私訊僅雙方可見`}
         </div>
       </div>
       <div className="chat-shell chat-shell-fill">
@@ -58,14 +66,20 @@ export function ParentMessages({
         <div className="send chat-composer">
           <input
             className="in"
-            placeholder="輸入訊息…"
+            placeholder={preview ? '預覽不可輸入…' : '輸入訊息…'}
             value={text}
+            disabled={preview}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === 'Enter') onSend();
             }}
           />
-          <button type="button" className="sendbtn" onClick={onSend} disabled={send.isPending}>
+          <button
+            type="button"
+            className="sendbtn"
+            onClick={onSend}
+            disabled={preview || send.isPending}
+          >
             ➤
           </button>
         </div>

@@ -6,9 +6,11 @@ import { todayIso } from '@/services/contact';
 export function ParentContact({
   classId,
   studentId,
+  preview = false,
 }: {
   classId: string | undefined;
   studentId: string | undefined;
+  preview?: boolean;
 }) {
   const date = todayIso();
   const { data: hw } = useHomework(classId, date, studentId);
@@ -23,17 +25,24 @@ export function ParentContact({
   return (
     <>
       <div className="info p">
-        ✅ 完成的項目可以自己打勾，老師端會同步看到完成人數
+        {preview
+          ? '👁 預覽：家長可在此打勾回報（預覽不可操作）'
+          : '✅ 完成的項目可以自己打勾，老師端會同步看到完成人數'}
         {total > 0 ? ` · 已完成 ${doneCount}/${total}` : ''}
       </div>
 
       <Card label="✍️ 今日作業">
         {hw && hw.length > 0 ? (
           hw.map((h) => (
-            <label key={h.id} className="rl" style={{ cursor: 'pointer' }}>
+            <label
+              key={h.id}
+              className="rl"
+              style={{ cursor: preview ? 'default' : 'pointer', opacity: preview ? 0.92 : 1 }}
+            >
               <input
                 type="checkbox"
                 checked={Boolean(h.done)}
+                disabled={preview}
                 onChange={(e) =>
                   toggle.mutate({
                     homeworkId: h.id,

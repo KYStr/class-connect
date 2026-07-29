@@ -11,6 +11,7 @@ import { hasSeen, useMarkOnboardingSeen, useOnboarding } from '@/hooks/useOnboar
 import { PARENT_WELCOME_KEY } from '@/services/onboarding';
 import { t } from '@/i18n';
 import { todayIso } from '@/services/contact';
+import type { ConsentForm, Student } from '@/types/domain';
 import { ParentAnnouncements } from './ParentAnnouncements';
 import { ParentContact } from './ParentContact';
 import { ParentGrades } from './ParentGrades';
@@ -19,13 +20,27 @@ import { ParentCalendar } from './ParentCalendar';
 import { ParentLeave } from './ParentLeave';
 import { ParentMessages } from './ParentMessages';
 import { ParentConsent } from './ParentConsent';
-import type { ConsentForm } from '@/types/domain';
 
 type SubView = 'home' | 'calendar' | 'leave' | 'messages' | 'consent';
 
-// Parent shell (SPEC 2.1 / 3.1). High-freq: contact + announcements; low-freq tucked away.
+export type ParentAppProps = {
+  /** Teacher-only: render as the selected student would see it (read-only). */
+  mode?: 'live' | 'preview';
+  previewStudent?: Student;
+  previewRoster?: Student[];
+  onPreviewStudentChange?: (id: string) => void;
+  onExitPreview?: () => void;
+};
 
-export function ParentApp() {
+// Parent shell (SPEC 2.1 / 3.1). High-freq: contact + announcements; low-freq tucked away.
+export function ParentApp({
+  mode = 'live',
+  previewStudent,
+  previewRoster,
+  onPreviewStudentChange,
+  onExitPreview,
+}: ParentAppProps = {}) {
+  const preview = mode === 'preview';
   const { signOut } = useAuth();
   const { toast } = useToast();
   const [tab, setTab] = useState('home');
@@ -35,7 +50,7 @@ export function ParentApp() {
   const [slideDir, setSlideDir] = useState<SlideDir>(null);
   const tabOrderRef = useRef<string[]>([]);
   const { data: children } = useMyChildren();
-  const child = children?.[0];
+  const child = preview ? previewStudent : children?.[0];
   const { data: features } = useFeatures(child?.classId);
   const { data: hw } = useHomework(child?.classId, todayIso(), child?.id);
   const { data: pendingConsent } = useMyConsentPending(
@@ -46,7 +61,10 @@ export function ParentApp() {
   const markSeen = useMarkOnboardingSeen();
   const copy = t().tour;
   const showParentWelcome =
-    onboardingReady && Boolean(child) && !hasSeen(onboarding, PARENT_WELCOME_KEY);
+    !preview &&
+    onboardingReady &&
+    Boolean(child) &&
+    !hasSeen(onboarding, PARENT_WELCOME_KEY);
 
   const doneCount = (hw ?? []).filter((h) => h.done).length;
   const total = hw?.length ?? 0;
@@ -111,10 +129,25 @@ export function ParentApp() {
     setTab(key);
   };
 
+  if (preview && !child) {
+    return (
+      <div className="stage">
+        <div className="body">
+          <EmptyState>請先加入學生再預覽</EmptyState>
+          {onExitPreview && (
+            <button type="button" className="ghost-btn" onClick={onExitPreview}>
+              返回導師後台
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="stage">
       <PhoneShell
-        contentKey={`${safeTab}-${view}`}
+        contentKey={`${safeTab}-${view}-${child?.id ?? ''}`}
         slideDir={tabSlideOn ? slideDir : null}
         animate={false}
         chrome={
@@ -122,9 +155,14 @@ export function ParentApp() {
             <StatusBar />
             <AppBar
               variant="p"
-              classLabel={`🏫 ${child ? `${child.name}的清單` : '我的清單'}`}
-              title={heads[safeTab] ?? '首頁'}
-              onLogout={signOut}
+              classLabel={
+                preview
+                  ? `👁 預覽 · ${child ? `${child.seat} ${child.name}` : '家長畫面'}`
+                  : `🏫 ${child ? `${child.name}的清單` : '我的清單'}`
+              }
+              title={heads[safeTab] ?? '今天'}
+              onBack={preview ? onExitPreview : undefined}
+              onLogout={preview ? undefined : signOut}
               titleSlideDir={tabSlideOn ? slideDir : null}
             />
           </>
@@ -139,12 +177,14 @@ export function ParentApp() {
           />
         }
         overlay={
-          <Tour
-            open={showParentWelcome}
-            title={copy.parentTitle}
-            steps={[{ body: copy.parentWelcome }]}
-            onDone={() => markSeen.mutate(PARENT_WELCOME_KEY)}
-          />
+          preview ? undefined : (
+            <Tour
+              open={showParentWelcome}
+              title={copy.parentTitle}
+              steps={[{ body: copy.parentWelcome }]}
+              onDone={() => markSeen.mutate(PARENT_WELCOME_KEY)}
+            />
+          )
         }
       >
         {safeTab === 'home' && view === 'calendar' && (
@@ -154,19 +194,54 @@ export function ParentApp() {
         )}
         {safeTab === 'home' && view === 'leave' && (
           <div className="body">
-            <ParentLeave studentId={child?.id} studentName={child?.name} onBack={goHome} />
+            <ParentLeave
+              studentId={child?.id}
+              studentName={child?.name}
+              onBack={goHome}
+              preview={preview}
+            />
           </div>
         )}
         {safeTab === 'home' && view === 'messages' && (
-          <ParentMessages classId={child?.classId} studentId={child?.id} onBack={goHome} />
+          <ParentMessages
+            classId={child?.classId}
+            studentId={child?.id}
+            onBack={goHome}
+            preview={preview}
+          />
         )}
         {safeTab === 'home' && view === 'consent' && (
           <div className="body">
-            <ParentConsent studentId={child?.id} onBack={goHome} initialForm={consentFocus} />
+            <ParentConsent
+              studentId={child?.id}
+              onBack={goHome}
+              initialForm={consentFocus}
+              preview={preview}
+            />
           </div>
         )}
         {safeTab === 'home' && view === 'home' && (
           <div className="body">
+            {preview && (
+              <div className="info a" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <span>家長會看到的畫面（唯讀）。可切換學生確認每位孩子的視角。</span>
+                {previewRoster && previewRoster.length > 1 && onPreviewStudentChange && (
+                  <select
+                    className="in"
+                    style={{ marginTop: 0 }}
+                    value={child?.id ?? ''}
+                    aria-label="預覽學生"
+                    onChange={(e) => onPreviewStudentChange(e.target.value)}
+                  >
+                    {previewRoster.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.seat} {s.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+            )}
             <Feature
               variant="p"
               kicker="今日作業"
@@ -254,12 +329,12 @@ export function ParentApp() {
 
         {safeTab === 'contact' && (
           <div className="body">
-            <ParentContact classId={child?.classId} studentId={child?.id} />
+            <ParentContact classId={child?.classId} studentId={child?.id} preview={preview} />
           </div>
         )}
         {safeTab === 'announcements' && (
           <div className="body">
-            <ParentAnnouncements classId={child?.classId} />
+            <ParentAnnouncements classId={child?.classId} preview={preview} />
           </div>
         )}
         {safeTab === 'growth' && (

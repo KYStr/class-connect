@@ -14,10 +14,12 @@ export function ParentLeave({
   studentId,
   studentName,
   onBack,
+  preview = false,
 }: {
   studentId: string | undefined;
   studentName?: string;
   onBack: () => void;
+  preview?: boolean;
 }) {
   const { toast } = useToast();
   const { data: list } = useParentLeaves(studentId);
@@ -29,6 +31,10 @@ export function ParentLeave({
   if (!studentId) return <EmptyState>尚未綁定孩子</EmptyState>;
 
   const onSubmit = () => {
+    if (preview) {
+      toast('預覽模式不可送出');
+      return;
+    }
     if (!reason.trim()) {
       toast('請填寫原因');
       return;
@@ -48,13 +54,18 @@ export function ParentLeave({
   return (
     <>
       <GhostButton onClick={onBack}>← 返回首頁</GhostButton>
-      <div className="info p">🤒 線上請假通知老師，不用打電話或在群組公開留言。</div>
+      <div className="info p">
+        {preview
+          ? '👁 預覽：家長請假表單（不可送出）'
+          : '🤒 線上請假通知老師，不用打電話或在群組公開留言。'}
+      </div>
       <Card label={`📝 幫 ${studentName ?? '孩子'} 請假`}>
         <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
           <select
             className="in"
             style={{ flex: 1 }}
             value={type}
+            disabled={preview}
             onChange={(e) => setType(e.target.value as LeaveType)}
           >
             <option value="sick">病假</option>
@@ -66,6 +77,7 @@ export function ParentLeave({
             type="date"
             style={{ flex: 1 }}
             value={leaveDate}
+            disabled={preview}
             onChange={(e) => setLeaveDate(e.target.value)}
           />
         </div>
@@ -73,11 +85,12 @@ export function ParentLeave({
           className="ta"
           placeholder="原因（例：發燒需就醫）"
           value={reason}
+          disabled={preview}
           onChange={(e) => setReason(e.target.value)}
           style={{ marginTop: 8 }}
         />
-        <Button onClick={onSubmit} disabled={submit.isPending} style={{ marginTop: 10 }}>
-          {submit.isPending ? '送出中…' : '送出給老師'}
+        <Button onClick={onSubmit} disabled={preview || submit.isPending} style={{ marginTop: 10 }}>
+          {preview ? '預覽不可送出' : submit.isPending ? '送出中…' : '送出給老師'}
         </Button>
       </Card>
       {(list?.length ?? 0) > 0 && (

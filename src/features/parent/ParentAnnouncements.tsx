@@ -2,7 +2,13 @@ import { Card, EmptyState, Pill } from '@/ui';
 import { useAnnouncements, useMarkAnnouncementRead } from '@/hooks/useAnnouncements';
 
 // Parent announcements tab (SPEC 3.1 / L5).
-export function ParentAnnouncements({ classId }: { classId: string | undefined }) {
+export function ParentAnnouncements({
+  classId,
+  preview = false,
+}: {
+  classId: string | undefined;
+  preview?: boolean;
+}) {
   const { data: list, isLoading } = useAnnouncements(classId);
   const mark = useMarkAnnouncementRead(classId);
 
@@ -12,6 +18,7 @@ export function ParentAnnouncements({ classId }: { classId: string | undefined }
 
   return (
     <>
+      {preview && <div className="info a">👁 預覽：僅顯示已發布公告（唯讀）</div>}
       {list.map((a) => (
         <Card key={a.id} label={a.important ? '⚠️ 重要公告' : '📣 公告'}>
           <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
@@ -39,7 +46,7 @@ export function ParentAnnouncements({ classId }: { classId: string | undefined }
                 minute: '2-digit',
               })}
             </span>
-            {!a.read && (
+            {!a.read && !preview && (
               <button className="read-btn" onClick={() => mark.mutate(a.id)}>
                 標記已讀
               </button>

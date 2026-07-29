@@ -7,10 +7,12 @@ export function ParentConsent({
   studentId,
   onBack,
   initialForm,
+  preview = false,
 }: {
   studentId: string | undefined;
   onBack: () => void;
   initialForm?: ConsentForm | null;
+  preview?: boolean;
 }) {
   const { toast } = useToast();
   const { data: pending, isLoading } = useMyConsentPending(studentId);
@@ -34,6 +36,7 @@ export function ParentConsent({
   return (
     <>
       <GhostButton onClick={onBack}>← 返回首頁</GhostButton>
+      {preview && <div className="info a">👁 預覽：同意書內容（不可簽署）</div>}
       <Card label="✍️ 線上簽署">
         <div style={{ fontSize: 16, fontWeight: 800 }}>{form.title}</div>
         {form.deadline && (
@@ -58,8 +61,12 @@ export function ParentConsent({
           type="button"
           className="read-btn"
           style={{ marginTop: 14, width: '100%' }}
-          disabled={sign.isPending}
-          onClick={() =>
+          disabled={preview || sign.isPending}
+          onClick={() => {
+            if (preview) {
+              toast('預覽模式不可簽署');
+              return;
+            }
             sign.mutate(form.id, {
               onSuccess: () => {
                 toast('已完成簽署');
@@ -67,10 +74,10 @@ export function ParentConsent({
                 onBack();
               },
               onError: (e) => toast(e instanceof Error ? e.message : '簽署失敗'),
-            })
-          }
+            });
+          }}
         >
-          {sign.isPending ? '簽署中…' : '✍️ 立即線上簽署'}
+          {preview ? '預覽不可簽署' : sign.isPending ? '簽署中…' : '✍️ 立即線上簽署'}
         </button>
       </Card>
       {(pending?.length ?? 0) > 1 && (

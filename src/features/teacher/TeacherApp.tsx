@@ -35,6 +35,8 @@ import { CalendarPanel } from './CalendarPanel';
 import { LeavesPanel } from './LeavesPanel';
 import { ConsentPanel } from './ConsentPanel';
 import { TeacherMessengerDock } from './TeacherMessengerDock';
+import { ParentApp } from '@/features/parent/ParentApp';
+import type { Student } from '@/types/domain';
 
 type OverviewView = 'home' | 'calendar' | 'leave' | 'consent';
 
@@ -52,6 +54,7 @@ export function TeacherApp() {
   const [msgOpenSignal, setMsgOpenSignal] = useState(0);
   const [featureGuideOpen, setFeatureGuideOpen] = useState(false);
   const [forceRosterOpen, setForceRosterOpen] = useState(false);
+  const [previewStudentId, setPreviewStudentId] = useState<string | null>(null);
   const [tabSlideOn, setTabSlideOn] = useState(
     () => localStorage.getItem('cc_tab_slide') !== '0',
   );
@@ -96,6 +99,15 @@ export function TeacherApp() {
   const showBusyTodos = hwLeft > 0 || annsNeedingRead > 0 || showLeaveTodo || showConsentTodo;
   /** Keep roster on overview until ≥1 parent has bound — so setup stays findable while testing. */
   const showOverviewRoster = !cls || boundCount === undefined || boundCount === 0;
+  const previewStudent: Student | undefined = roster?.find((s) => s.id === previewStudentId);
+
+  const openParentPreview = () => {
+    if (!roster || roster.length === 0) {
+      toast('請先加入學生，才能預覽家長畫面');
+      return;
+    }
+    setPreviewStudentId(roster[0].id);
+  };
 
   const goTab = (next: string) => {
     const order = tabOrderRef.current;
@@ -242,6 +254,18 @@ export function TeacherApp() {
     grades: '登錄成績',
     settings: '設定 / 更多功能',
   };
+
+  if (previewStudentId) {
+    return (
+      <ParentApp
+        mode="preview"
+        previewStudent={previewStudent}
+        previewRoster={roster}
+        onPreviewStudentChange={setPreviewStudentId}
+        onExitPreview={() => setPreviewStudentId(null)}
+      />
+    );
+  }
 
   return (
     <div className="stage">
@@ -505,6 +529,14 @@ export function TeacherApp() {
             <div className="info a">
               💡 到「設定」可開啟請假、同意書、成長等更多功能；家長端會同步長出入口。
             </div>
+            <button
+              type="button"
+              className="ghost-btn"
+              style={{ marginTop: 4 }}
+              onClick={openParentPreview}
+            >
+              👁 預覽家長畫面
+            </button>
           </div>
         )}
 
