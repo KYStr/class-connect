@@ -1,3 +1,0 @@
-# Cloudflare Pages — SPA fallback (React Router).
-# Without this, direct visits to /login, /t, /p return 404.
-/*    /index.html   200

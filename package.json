@@ -19,7 +19,8 @@
     "storybook": "echo \"[storybook] not wired yet (P0/P1)\" && exit 0",
     "gen:types": "supabase gen types typescript --local > src/types/db.ts",
     "deploy:db": "npx supabase db push",
-    "deploy:functions": "npx supabase functions deploy redeem_invite && npx supabase functions deploy send_push"
+    "deploy:functions": "npx supabase functions deploy redeem_invite && npx supabase functions deploy send_push",
+    "deploy:web": "npm run build && npx wrangler deploy"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",
