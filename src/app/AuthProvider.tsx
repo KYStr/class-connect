@@ -86,6 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (hasSupabaseEnv) await supabase.auth.signOut();
     setSession(null);
     setProfile(null);
+    // Cache wipe is handled by AuthQueryReset on uid → null.
   };
 
   const role: Role | null = profile?.role ?? previewRole;

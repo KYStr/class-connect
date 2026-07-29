@@ -1,6 +1,16 @@
-import { useState } from 'react';
-import { AppBar, EmptyState, Feature, PhoneShell, StatusBar, TabBar, TrackSwipe, useToast } from '@/ui';
-import type { TabItem } from '@/ui';
+import { useMemo, useRef, useState } from 'react';
+import {
+  AppBar,
+  EmptyState,
+  Feature,
+  PhoneShell,
+  StatusBar,
+  TabBar,
+  Tour,
+  TrackSwipe,
+  useToast,
+} from '@/ui';
+import type { SlideDir, TabItem, TourStep } from '@/ui';
 import { useAuth } from '@/app/AuthProvider';
 import { useMyClasses, useRoster } from '@/hooks/useClasses';
 import { useFeatures } from '@/hooks/useFeatures';
@@ -9,6 +19,9 @@ import { useBring, useHomeworkCompletion } from '@/hooks/useContact';
 import { useClassRealtime } from '@/hooks/useClassRealtime';
 import { usePendingLeaves } from '@/hooks/useLeaves';
 import { useConsentForms, useConsentStatus } from '@/hooks/useConsent';
+import { hasSeen, useMarkOnboardingSeen, useOnboarding } from '@/hooks/useOnboarding';
+import { TEACHER_WELCOME_KEY } from '@/services/onboarding';
+import { t } from '@/i18n';
 import { todayIso } from '@/services/contact';
 import { ClassManager } from './ClassManager';
 import { FeatureSettings } from './FeatureSettings';
@@ -37,6 +50,13 @@ export function TeacherApp() {
     null,
   );
   const [msgOpenSignal, setMsgOpenSignal] = useState(0);
+  const [featureGuideOpen, setFeatureGuideOpen] = useState(false);
+  const [forceRosterOpen, setForceRosterOpen] = useState(false);
+  const [tabSlideOn, setTabSlideOn] = useState(
+    () => localStorage.getItem('cc_tab_slide') !== '0',
+  );
+  const [slideDir, setSlideDir] = useState<SlideDir>(null);
+  const tabOrderRef = useRef<string[]>([]);
   const { data: classes } = useMyClasses();
   const cls = classes?.[0];
   const { data: roster } = useRoster(cls?.id);
@@ -52,6 +72,11 @@ export function TeacherApp() {
     features?.consent ? latestConsentId : undefined,
   );
   useClassRealtime(cls?.id);
+  const { data: onboarding, isSuccess: onboardingReady } = useOnboarding();
+  const markSeen = useMarkOnboardingSeen();
+  const copy = t().tour;
+  const showWelcome =
+    onboardingReady && Boolean(cls) && !hasSeen(onboarding, TEACHER_WELCOME_KEY);
 
   const classSize = roster?.length ?? 0;
   const done = completion?.done ?? 0;
@@ -68,8 +93,18 @@ export function TeacherApp() {
   const showLeaveTodo = Boolean(features?.leave && pendingLeaveCount > 0);
   const showConsentTodo = Boolean(features?.consent && unsignedCount > 0 && latestConsent);
   const showBusyTodos = hwLeft > 0 || annsNeedingRead > 0 || showLeaveTodo || showConsentTodo;
+  /** Only show roster setup on overview until the class has students (one-time). */
+  const showOverviewRoster = !cls || classSize === 0;
 
   const goTab = (next: string) => {
+    const order = tabOrderRef.current;
+    const from = order.indexOf(tab);
+    const to = order.indexOf(next);
+    if (tabSlideOn && from >= 0 && to >= 0 && from !== to) {
+      setSlideDir(to > from ? 'right' : 'left');
+    } else {
+      setSlideDir(null);
+    }
     setOpenTrackingFor(null);
     setOverviewView('home');
     setTab(next);
@@ -92,6 +127,85 @@ export function TeacherApp() {
     setOverviewView(view);
   };
 
+  const goHomeOverview = () => {
+    setTab('overview');
+    setOverviewView('home');
+  };
+
+  const fg = copy.featureGuide;
+  const featureGuideSteps: TourStep[] = useMemo(() => {
+    const steps: TourStep[] = [
+      {
+        body: fg.announcements,
+        target: '[data-tour="tab-announcements"]',
+        onEnter: () => goTab('announcements'),
+      },
+      {
+        body: fg.contact,
+        target: '[data-tour="tab-contact"]',
+        onEnter: () => goTab('contact'),
+      },
+      {
+        body: fg.todos,
+        target: '[data-tour="todos"]',
+        onEnter: () => goHomeOverview(),
+      },
+      {
+        body: fg.roster,
+        target: '[data-tour="settings-roster"]',
+        onEnter: () => {
+          setForceRosterOpen(true);
+          goTab('settings');
+        },
+      },
+      {
+        body: features?.growth ? fg.growthOn : fg.growthOff,
+        target: features?.growth ? '[data-tour="tab-growth"]' : '[data-tour="feature-growth"]',
+        onEnter: () => goTab(features?.growth ? 'growth' : 'settings'),
+      },
+      {
+        body: features?.grades ? fg.gradesOn : fg.gradesOff,
+        target: features?.grades ? '[data-tour="tab-grades"]' : '[data-tour="feature-grades"]',
+        onEnter: () => goTab(features?.grades ? 'grades' : 'settings'),
+      },
+      {
+        body: fg.calendar,
+        target: features?.calendar
+          ? '[data-tour="panel-calendar"]'
+          : '[data-tour="feature-calendar"]',
+        onEnter: () => {
+          if (features?.calendar) goOverviewView('calendar', true);
+          else goTab('settings');
+        },
+      },
+      {
+        body: fg.leave,
+        target: features?.leave ? '[data-tour="panel-leave"]' : '[data-tour="feature-leave"]',
+        onEnter: () => {
+          if (features?.leave) goOverviewView('leave', true);
+          else goTab('settings');
+        },
+      },
+      {
+        body: fg.consent,
+        target: features?.consent
+          ? '[data-tour="panel-consent"]'
+          : '[data-tour="feature-consent"]',
+        onEnter: () => {
+          if (features?.consent) goOverviewView('consent', true);
+          else goTab('settings');
+        },
+      },
+      {
+        body: fg.moreFeatures,
+        target: '[data-tour="tab-settings"]',
+        onEnter: () => goTab('settings'),
+      },
+    ];
+    return steps;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- goTab/setState are stable enough for guide
+  }, [features, fg]);
+
   // If the active tab was gated off, fall back to overview.
   const safeTab =
     (tab === 'growth' && !features?.growth) || (tab === 'grades' && !features?.grades)
@@ -106,6 +220,7 @@ export function TeacherApp() {
     ...(features?.grades ? [{ key: 'grades', label: '成績', icon: '📊' } as TabItem] : []),
     { key: 'settings', label: '設定', icon: '⚙️' },
   ];
+  tabOrderRef.current = tabs.map((t) => t.key);
 
   const overviewTitles: Record<OverviewView, string> = {
     home: '後台總覽',
@@ -126,6 +241,9 @@ export function TeacherApp() {
   return (
     <div className="stage">
       <PhoneShell
+        contentKey={safeTab}
+        slideDir={tabSlideOn ? slideDir : null}
+        animate={false}
         chrome={
           <>
             <StatusBar />
@@ -134,24 +252,67 @@ export function TeacherApp() {
               classLabel={`👩‍🏫 導師後台 · ${cls?.name ?? '尚未建立班級'}`}
               title={heads[safeTab] ?? '總覽'}
               onLogout={signOut}
+              titleSlideDir={tabSlideOn ? slideDir : null}
             />
           </>
         }
-        tabbar={<TabBar variant="t" items={tabs} active={safeTab} onSelect={goTab} />}
-        overlay={<TeacherMessengerDock classId={cls?.id} openSignal={msgOpenSignal} />}
+        tabbar={
+          <TabBar
+            variant="t"
+            items={tabs}
+            active={safeTab}
+            onSelect={goTab}
+            animate={tabSlideOn}
+          />
+        }
+        overlay={
+          <>
+            <TeacherMessengerDock classId={cls?.id} openSignal={msgOpenSignal} />
+            <Tour
+              open={showWelcome && !featureGuideOpen}
+              title={copy.teacherTitle}
+              steps={[
+                {
+                  body: copy.teacherSteps[0],
+                  target: '[data-tour="tab-announcements"]',
+                },
+                {
+                  body: copy.teacherSteps[1],
+                  target: '[data-tour="roster"]',
+                  onEnter: () => goHomeOverview(),
+                },
+                {
+                  body: copy.teacherSteps[2],
+                  target: '[data-tour="tab-settings"]',
+                },
+              ]}
+              onDone={() => markSeen.mutate(TEACHER_WELCOME_KEY)}
+            />
+            <Tour
+              open={featureGuideOpen}
+              browsable
+              title={copy.featureGuideTitle}
+              steps={featureGuideSteps}
+              onDone={() => {
+                setFeatureGuideOpen(false);
+                setForceRosterOpen(false);
+              }}
+            />
+          </>
+        }
       >
         {safeTab === 'overview' && overviewView === 'calendar' && (
-          <div className="body">
+          <div className="body" data-tour="panel-calendar">
             <CalendarPanel classId={cls?.id} onBack={() => setOverviewView('home')} />
           </div>
         )}
         {safeTab === 'overview' && overviewView === 'leave' && (
-          <div className="body">
+          <div className="body" data-tour="panel-leave">
             <LeavesPanel classId={cls?.id} onBack={() => setOverviewView('home')} />
           </div>
         )}
         {safeTab === 'overview' && overviewView === 'consent' && (
-          <div className="body">
+          <div className="body" data-tour="panel-consent">
             <ConsentPanel classId={cls?.id} onBack={() => setOverviewView('home')} />
           </div>
         )}
@@ -172,8 +333,12 @@ export function TeacherApp() {
                 <AnnouncementTrackingPanel classId={cls.id} />
               </TrackSwipe>
             )}
-            <ClassManager />
-            <div className="card">
+            {showOverviewRoster && (
+              <div data-tour="roster">
+                <ClassManager />
+              </div>
+            )}
+            <div className="card" data-tour="todos">
               <div className="lab">🔔 今日待辦</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 9, marginTop: 6 }}>
                 {!showBusyTodos && <EmptyState icon="✅">作業與公告都跟上了</EmptyState>}
@@ -363,7 +528,16 @@ export function TeacherApp() {
         )}
         {safeTab === 'settings' && (
           <div className="body">
-            <FeatureSettings classId={cls?.id} />
+            <FeatureSettings
+              classId={cls?.id}
+              forceRosterOpen={forceRosterOpen}
+              onOpenFeatureGuide={() => setFeatureGuideOpen(true)}
+              tabSlideOn={tabSlideOn}
+              onTabSlideChange={(on) => {
+                localStorage.setItem('cc_tab_slide', on ? '1' : '0');
+                setTabSlideOn(on);
+              }}
+            />
           </div>
         )}
       </PhoneShell>

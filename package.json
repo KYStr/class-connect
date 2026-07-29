@@ -17,7 +17,9 @@
     "test:e2e": "playwright test",
     "test:visual": "echo \"[visual] Storybook/Chromatic not wired yet (P5)\" && exit 0",
     "storybook": "echo \"[storybook] not wired yet (P0/P1)\" && exit 0",
-    "gen:types": "supabase gen types typescript --local > src/types/db.ts"
+    "gen:types": "supabase gen types typescript --local > src/types/db.ts",
+    "deploy:db": "npx supabase db push",
+    "deploy:functions": "npx supabase functions deploy redeem_invite && npx supabase functions deploy send_push"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",

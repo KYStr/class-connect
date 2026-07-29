@@ -23,8 +23,14 @@ function CreateClassForm() {
   const [name, setName] = useState('');
   const mut = useMutation({
     mutationFn: () => createClass({ name: name.trim() || '一年甲班' }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.classes.mine() });
+    onSuccess: (created) => {
+      // Optimistic so UI flips to roster / tour without a manual refresh.
+      qc.setQueryData(queryKeys.classes.mine(), (prev: { id: string }[] | undefined) => {
+        if (prev?.some((c) => c.id === created.id)) return prev;
+        return [...(prev ?? []), created];
+      });
+      void qc.invalidateQueries({ queryKey: queryKeys.classes.mine() });
+      void qc.invalidateQueries({ queryKey: queryKeys.features.forClass(created.id) });
       toast('班級已建立');
     },
   });
@@ -81,7 +87,7 @@ function RosterManager({ classId, className }: { classId: string; className: str
   const linkFor = (code: string) => `${window.location.origin}/join/${code}`;
 
   return (
-    <>
+    <div className="roster-stack">
       <Card label={`👩‍🏫 ${className} · 名單（${roster?.length ?? 0}）`}>
         {roster && roster.length > 0 ? (
           roster.map((s) => {
@@ -140,6 +146,6 @@ function RosterManager({ classId, className }: { classId: string; className: str
           {addMut.isPending ? '加入中…' : '＋ 加入名單'}
         </GhostButton>
       </Card>
-    </>
+    </div>
   );
 }

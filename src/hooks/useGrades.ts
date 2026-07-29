@@ -1,20 +1,44 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/queryKeys';
 import {
+  addExamType,
+  addSubject,
+  archiveExam,
   deleteExam,
+  deleteExamType,
+  deleteSubject,
   getDistribution,
   getExamRoster,
   getMyChildScore,
   getPercentile,
+  listExamTypes,
   listExams,
+  listSubjects,
   setScore,
+  unarchiveExam,
   upsertExam,
 } from '@/services/grades';
 
-export function useExams(classId: string | undefined) {
+export function useExams(classId: string | undefined, archived = false) {
   return useQuery({
-    queryKey: queryKeys.grades.exams(classId ?? ''),
-    queryFn: () => listExams(classId as string),
+    queryKey: [...queryKeys.grades.exams(classId ?? ''), archived ? 'archived' : 'active'] as const,
+    queryFn: () => listExams(classId as string, { archived }),
+    enabled: Boolean(classId),
+  });
+}
+
+export function useSubjects(classId: string | undefined) {
+  return useQuery({
+    queryKey: queryKeys.grades.subjects(classId ?? ''),
+    queryFn: () => listSubjects(classId as string),
+    enabled: Boolean(classId),
+  });
+}
+
+export function useExamTypes(classId: string | undefined) {
+  return useQuery({
+    queryKey: queryKeys.grades.examTypes(classId ?? ''),
+    queryFn: () => listExamTypes(classId as string),
     enabled: Boolean(classId),
   });
 }
@@ -59,9 +83,57 @@ export function useUpsertExam(classId: string | undefined) {
       name: string;
       published: boolean;
       showDist: boolean;
+      subjectId?: string | null;
+      examTypeId?: string | null;
     }) => upsertExam({ classId: classId as string, ...input }),
     onSuccess: () => {
       if (classId) qc.invalidateQueries({ queryKey: queryKeys.grades.exams(classId) });
+    },
+  });
+}
+
+export function useAddSubject(classId: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (name: string) => addSubject(classId as string, name),
+    onSuccess: () => {
+      if (classId) qc.invalidateQueries({ queryKey: queryKeys.grades.subjects(classId) });
+    },
+  });
+}
+
+export function useAddExamType(classId: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (name: string) => addExamType(classId as string, name),
+    onSuccess: () => {
+      if (classId) qc.invalidateQueries({ queryKey: queryKeys.grades.examTypes(classId) });
+    },
+  });
+}
+
+export function useDeleteSubject(classId: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteSubject(id),
+    onSuccess: () => {
+      if (classId) {
+        qc.invalidateQueries({ queryKey: queryKeys.grades.subjects(classId) });
+        qc.invalidateQueries({ queryKey: queryKeys.grades.exams(classId) });
+      }
+    },
+  });
+}
+
+export function useDeleteExamType(classId: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteExamType(id),
+    onSuccess: () => {
+      if (classId) {
+        qc.invalidateQueries({ queryKey: queryKeys.grades.examTypes(classId) });
+        qc.invalidateQueries({ queryKey: queryKeys.grades.exams(classId) });
+      }
     },
   });
 }
@@ -81,12 +153,36 @@ export function useSetScore(examId: string | undefined, classId: string | undefi
   });
 }
 
+function invalidateExamLists(qc: ReturnType<typeof useQueryClient>, classId: string) {
+  qc.invalidateQueries({ queryKey: queryKeys.grades.exams(classId) });
+}
+
+export function useArchiveExam(classId: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => archiveExam(id),
+    onSuccess: () => {
+      if (classId) invalidateExamLists(qc, classId);
+    },
+  });
+}
+
+export function useUnarchiveExam(classId: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => unarchiveExam(id),
+    onSuccess: () => {
+      if (classId) invalidateExamLists(qc, classId);
+    },
+  });
+}
+
 export function useDeleteExam(classId: string | undefined) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => deleteExam(id),
     onSuccess: () => {
-      if (classId) qc.invalidateQueries({ queryKey: queryKeys.grades.exams(classId) });
+      if (classId) invalidateExamLists(qc, classId);
     },
   });
 }

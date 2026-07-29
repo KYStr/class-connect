@@ -6,6 +6,7 @@ import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persi
 import { get, set, del } from 'idb-keyval';
 import { RouterProvider } from 'react-router-dom';
 import { AuthProvider } from '@/app/AuthProvider';
+import { AuthQueryReset } from '@/app/AuthQueryReset';
 import { router } from '@/app/router';
 import { InstallPrompt, PushOptInBanner, ToastProvider } from '@/ui';
 import './styles/global.css';
@@ -20,13 +21,15 @@ const queryClient = new QueryClient({
   },
 });
 
+const QUERY_PERSIST_KEY = 'cc-query-cache';
+
 const persister = createAsyncStoragePersister({
   storage: {
     getItem: async (key) => (await get<string>(key)) ?? null,
     setItem: async (key, value) => set(key, value),
     removeItem: async (key) => del(key),
   },
-  key: 'cc-query-cache',
+  key: QUERY_PERSIST_KEY,
 });
 
 createRoot(document.getElementById('root')!).render(
@@ -43,6 +46,7 @@ createRoot(document.getElementById('root')!).render(
       }}
     >
       <AuthProvider>
+        <AuthQueryReset />
         <ToastProvider>
           <InstallPrompt />
           <PushOptInBanner />

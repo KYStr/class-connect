@@ -153,6 +153,28 @@ export async function deleteBring(id: string): Promise<void> {
   if (error) throw error;
 }
 
+export async function updateHomework(id: string, text: string): Promise<HomeworkItem> {
+  const { data, error } = await supabase
+    .from('homework_items')
+    .update({ text })
+    .eq('id', id)
+    .select('id, text, note, due_date')
+    .single();
+  if (error) throw error;
+  return toHomework(data as HwRow);
+}
+
+export async function updateBring(id: string, text: string): Promise<BringItem> {
+  const { data, error } = await supabase
+    .from('bring_items')
+    .update({ text })
+    .eq('id', id)
+    .select('id, text, note, due_date')
+    .single();
+  if (error) throw error;
+  return toBring(data as BringRow);
+}
+
 /** SPEC L11: copy yesterday's homework + bring into targetDate (replaces target day's items). */
 export async function copyYesterdayContact(classId: string, targetDate: string): Promise<void> {
   const src = yesterdayIso(targetDate);

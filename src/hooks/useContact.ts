@@ -11,6 +11,8 @@ import {
   listHomework,
   todayIso,
   toggleHomeworkDone,
+  updateBring,
+  updateHomework,
 } from '@/services/contact';
 
 export function useHomework(classId: string | undefined, date: string = todayIso(), studentId?: string) {
@@ -79,6 +81,26 @@ export function useDeleteBring(classId: string | undefined, date: string = today
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => deleteBring(id),
+    onSuccess: () => {
+      if (classId) invalidateContact(qc, classId, date);
+    },
+  });
+}
+
+export function useUpdateHomework(classId: string | undefined, date: string = todayIso()) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { id: string; text: string }) => updateHomework(input.id, input.text),
+    onSuccess: () => {
+      if (classId) invalidateContact(qc, classId, date);
+    },
+  });
+}
+
+export function useUpdateBring(classId: string | undefined, date: string = todayIso()) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { id: string; text: string }) => updateBring(input.id, input.text),
     onSuccess: () => {
       if (classId) invalidateContact(qc, classId, date);
     },

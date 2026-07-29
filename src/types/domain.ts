@@ -82,6 +82,23 @@ export interface Exam {
   name: string;
   published: boolean;
   showDist: boolean;
+  subjectId?: string | null;
+  examTypeId?: string | null;
+  archivedAt?: string | null;
+}
+
+export interface GradeSubject {
+  id: string;
+  classId: string;
+  name: string;
+  sortOrder: number;
+}
+
+export interface ExamType {
+  id: string;
+  classId: string;
+  name: string;
+  sortOrder: number;
 }
 
 export interface DistBucket {

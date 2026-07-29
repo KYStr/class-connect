@@ -1,12 +1,15 @@
-import { useState } from 'react';
-import { AppBar, EmptyState, Feature, PhoneShell, StatusBar, TabBar, useToast } from '@/ui';
-import type { TabItem } from '@/ui';
+import { useRef, useState } from 'react';
+import { AppBar, EmptyState, Feature, PhoneShell, StatusBar, TabBar, Tour, useToast } from '@/ui';
+import type { SlideDir, TabItem } from '@/ui';
 import { useAuth } from '@/app/AuthProvider';
 import { useMyChildren } from '@/hooks/useMyChildren';
 import { useFeatures } from '@/hooks/useFeatures';
 import { useHomework } from '@/hooks/useContact';
 import { useClassRealtime } from '@/hooks/useClassRealtime';
 import { useMyConsentPending } from '@/hooks/useConsent';
+import { hasSeen, useMarkOnboardingSeen, useOnboarding } from '@/hooks/useOnboarding';
+import { PARENT_WELCOME_KEY } from '@/services/onboarding';
+import { t } from '@/i18n';
 import { todayIso } from '@/services/contact';
 import { ParentAnnouncements } from './ParentAnnouncements';
 import { ParentContact } from './ParentContact';
@@ -28,6 +31,9 @@ export function ParentApp() {
   const [tab, setTab] = useState('home');
   const [view, setView] = useState<SubView>('home');
   const [consentFocus, setConsentFocus] = useState<ConsentForm | null>(null);
+  const [tabSlideOn] = useState(() => localStorage.getItem('cc_tab_slide') !== '0');
+  const [slideDir, setSlideDir] = useState<SlideDir>(null);
+  const tabOrderRef = useRef<string[]>([]);
   const { data: children } = useMyChildren();
   const child = children?.[0];
   const { data: features } = useFeatures(child?.classId);
@@ -36,6 +42,11 @@ export function ParentApp() {
     features?.consent ? child?.id : undefined,
   );
   useClassRealtime(child?.classId);
+  const { data: onboarding, isSuccess: onboardingReady } = useOnboarding();
+  const markSeen = useMarkOnboardingSeen();
+  const copy = t().tour;
+  const showParentWelcome =
+    onboardingReady && Boolean(child) && !hasSeen(onboarding, PARENT_WELCOME_KEY);
 
   const doneCount = (hw ?? []).filter((h) => h.done).length;
   const total = hw?.length ?? 0;
@@ -67,6 +78,7 @@ export function ParentApp() {
     ...(features?.growth ? [{ key: 'growth', label: '成長', icon: '🌱' } as TabItem] : []),
     ...(features?.grades ? [{ key: 'grades', label: '成績', icon: '📊' } as TabItem] : []),
   ];
+  tabOrderRef.current = tabs.map((t) => t.key);
 
   const heads: Record<string, string> = {
     home:
@@ -86,6 +98,14 @@ export function ParentApp() {
   };
 
   const onSelectTab = (key: string) => {
+    const order = tabOrderRef.current;
+    const from = order.indexOf(tab);
+    const to = order.indexOf(key);
+    if (tabSlideOn && from >= 0 && to >= 0 && from !== to) {
+      setSlideDir(to > from ? 'right' : 'left');
+    } else {
+      setSlideDir(null);
+    }
     setView('home');
     setConsentFocus(null);
     setTab(key);
@@ -94,6 +114,9 @@ export function ParentApp() {
   return (
     <div className="stage">
       <PhoneShell
+        contentKey={`${safeTab}-${view}`}
+        slideDir={tabSlideOn ? slideDir : null}
+        animate={false}
         chrome={
           <>
             <StatusBar />
@@ -102,10 +125,27 @@ export function ParentApp() {
               classLabel={`🏫 ${child ? `${child.name}的清單` : '我的清單'}`}
               title={heads[safeTab] ?? '首頁'}
               onLogout={signOut}
+              titleSlideDir={tabSlideOn ? slideDir : null}
             />
           </>
         }
-        tabbar={<TabBar variant="p" items={tabs} active={safeTab} onSelect={onSelectTab} />}
+        tabbar={
+          <TabBar
+            variant="p"
+            items={tabs}
+            active={safeTab}
+            onSelect={onSelectTab}
+            animate={tabSlideOn}
+          />
+        }
+        overlay={
+          <Tour
+            open={showParentWelcome}
+            title={copy.parentTitle}
+            steps={[{ body: copy.parentWelcome }]}
+            onDone={() => markSeen.mutate(PARENT_WELCOME_KEY)}
+          />
+        }
       >
         {safeTab === 'home' && view === 'calendar' && (
           <div className="body">

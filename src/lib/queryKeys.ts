@@ -9,6 +9,9 @@ export const queryKeys = {
   features: {
     forClass: (classId: string) => ['features', classId] as const,
   },
+  onboarding: {
+    mine: () => ['onboarding', 'mine'] as const,
+  },
   students: {
     roster: (classId: string) => ['students', 'roster', classId] as const,
     mine: () => ['students', 'mine'] as const,
@@ -26,6 +29,8 @@ export const queryKeys = {
   },
   grades: {
     exams: (classId: string) => ['grades', 'exams', classId] as const,
+    subjects: (classId: string) => ['grades', 'subjects', classId] as const,
+    examTypes: (classId: string) => ['grades', 'examTypes', classId] as const,
     myScore: (examId: string, studentId: string) =>
       ['grades', 'score', examId, studentId] as const,
     distribution: (examId: string) => ['grades', 'dist', examId] as const,
