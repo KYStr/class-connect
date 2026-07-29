@@ -75,7 +75,7 @@ export function TeacherApp() {
   const { data: consentStatus } = useConsentStatus(
     features?.consent ? latestConsentId : undefined,
   );
-  useClassRealtime(cls?.id);
+  useClassRealtime(previewStudentId ? undefined : cls?.id);
   const { data: onboarding, isSuccess: onboardingReady } = useOnboarding();
   const markSeen = useMarkOnboardingSeen();
   const copy = t().tour;

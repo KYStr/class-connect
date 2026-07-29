@@ -56,7 +56,7 @@ export function ParentApp({
   const { data: pendingConsent } = useMyConsentPending(
     features?.consent ? child?.id : undefined,
   );
-  useClassRealtime(child?.classId);
+  useClassRealtime(preview ? undefined : child?.classId);
   const { data: onboarding, isSuccess: onboardingReady } = useOnboarding();
   const markSeen = useMarkOnboardingSeen();
   const copy = t().tour;
