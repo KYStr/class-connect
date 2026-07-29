@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button, Card, EmptyState, GhostButton, useToast } from '@/ui';
 import { queryKeys } from '@/lib/queryKeys';
@@ -78,6 +78,12 @@ function RosterManager({ classId, className }: { classId: string; className: str
     },
     onError: (e) => toast(e instanceof Error ? e.message : '產生邀請碼失敗'),
   });
+
+  useEffect(() => {
+    if ((invites ?? []).some((i) => i.usedAt)) {
+      void qc.invalidateQueries({ queryKey: queryKeys.students.boundCount(classId) });
+    }
+  }, [invites, classId, qc]);
 
   const usedByStudent = new Map<string, boolean>();
   (invites ?? []).forEach((i) => {

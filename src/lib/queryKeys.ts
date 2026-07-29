@@ -14,6 +14,7 @@ export const queryKeys = {
   },
   students: {
     roster: (classId: string) => ['students', 'roster', classId] as const,
+    boundCount: (classId: string) => ['students', 'bound', classId] as const,
     mine: () => ['students', 'mine'] as const,
   },
   announcements: {

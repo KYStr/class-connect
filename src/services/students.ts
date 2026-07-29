@@ -18,6 +18,16 @@ export async function getRoster(classId: string): Promise<Student[]> {
   return ((data ?? []) as StudentRow[]).map(toStudent);
 }
 
+/** How many roster students already have ≥1 parent account bound. */
+export async function countBoundStudents(classId: string): Promise<number> {
+  const { data, error } = await supabase
+    .from('guardianships')
+    .select('student_id, students!inner(class_id)')
+    .eq('students.class_id', classId);
+  if (error) throw error;
+  return new Set(((data ?? []) as { student_id: string }[]).map((r) => r.student_id)).size;
+}
+
 export async function getMyChildren(): Promise<Student[]> {
   // RLS on students returns only children the parent guards.
   const { data, error } = await supabase

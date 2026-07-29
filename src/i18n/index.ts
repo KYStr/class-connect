@@ -6,7 +6,7 @@ export const zhHant = {
     /** First-time welcome (≤ 3 steps) — setup on overview. */
     teacherSteps: [
       '底部有公告、聯絡簿、聯絡老師——這三項永遠可用。',
-      '在總覽加入學生，並產生邀請碼給家長綁定。',
+      '在總覽加入學生，並產生邀請碼；家長綁定後名冊才會收進設定。',
       '需要成績、行事曆等進階功能時，到「設定」逐一開啟。',
     ],
     featureGuideTitle: '功能位置導覽',
@@ -14,7 +14,7 @@ export const zhHant = {
       announcements: '公告：在這裡發布全班通知與已讀回條。',
       contact: '聯絡簿：寫今日作業與明日攜帶。',
       todos: '今日待辦：一眼看到請假、未簽、未完成作業。',
-      roster: '名冊與邀請：在設定裡管理學生、產生綁定連結。',
+      roster: '名冊與邀請：家長綁定前在總覽；綁定後也可到設定管理。',
       growthOn: '成長：底部已有分頁，可記錄亮點與照片。',
       growthOff: '成長：到設定開啟後，底部會出現分頁。',
       gradesOn: '成績：底部已有分頁，可登錄考試分數。',

@@ -8,7 +8,7 @@ import {
   useMarkOnboardingSeen,
   useOnboarding,
 } from '@/hooks/useOnboarding';
-import { useRoster } from '@/hooks/useClasses';
+import { useBoundStudentCount, useRoster } from '@/hooks/useClasses';
 import { sendTestPushToSelf } from '@/services/push';
 import { pointOutKey } from '@/services/onboarding';
 import { t } from '@/i18n';
@@ -42,6 +42,7 @@ export function FeatureSettings({
 }) {
   const { data: features, isLoading } = useFeatures(classId);
   const { data: roster } = useRoster(classId);
+  const { data: boundCount } = useBoundStudentCount(classId);
   const setFeature = useSetFeature(classId);
   const enablePush = useEnablePush();
   const disablePush = useDisablePush();
@@ -57,10 +58,11 @@ export function FeatureSettings({
   const [rosterOpen, setRosterOpen] = useState(true);
   const rosterPrimed = useRef(false);
   useEffect(() => {
-    if (roster === undefined || rosterPrimed.current) return;
+    if (boundCount === undefined || rosterPrimed.current) return;
     rosterPrimed.current = true;
-    setRosterOpen(roster.length === 0);
-  }, [roster]);
+    // Collapse in settings only after at least one parent account is bound.
+    setRosterOpen(boundCount === 0);
+  }, [boundCount]);
 
   useEffect(() => {
     if (forceRosterOpen) setRosterOpen(true);

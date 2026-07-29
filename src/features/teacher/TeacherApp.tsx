@@ -12,7 +12,7 @@ import {
 } from '@/ui';
 import type { SlideDir, TabItem, TourStep } from '@/ui';
 import { useAuth } from '@/app/AuthProvider';
-import { useMyClasses, useRoster } from '@/hooks/useClasses';
+import { useMyClasses, useBoundStudentCount, useRoster } from '@/hooks/useClasses';
 import { useFeatures } from '@/hooks/useFeatures';
 import { useAnnouncementsWithStats } from '@/hooks/useAnnouncements';
 import { useBring, useHomeworkCompletion } from '@/hooks/useContact';
@@ -60,6 +60,7 @@ export function TeacherApp() {
   const { data: classes } = useMyClasses();
   const cls = classes?.[0];
   const { data: roster } = useRoster(cls?.id);
+  const { data: boundCount } = useBoundStudentCount(cls?.id);
   const { data: features } = useFeatures(cls?.id);
   const date = todayIso();
   const { data: completion } = useHomeworkCompletion(cls?.id, date);
@@ -93,8 +94,8 @@ export function TeacherApp() {
   const showLeaveTodo = Boolean(features?.leave && pendingLeaveCount > 0);
   const showConsentTodo = Boolean(features?.consent && unsignedCount > 0 && latestConsent);
   const showBusyTodos = hwLeft > 0 || annsNeedingRead > 0 || showLeaveTodo || showConsentTodo;
-  /** Only show roster setup on overview until the class has students (one-time). */
-  const showOverviewRoster = !cls || classSize === 0;
+  /** Keep roster on overview until ≥1 parent has bound — so setup stays findable while testing. */
+  const showOverviewRoster = !cls || boundCount === undefined || boundCount === 0;
 
   const goTab = (next: string) => {
     const order = tabOrderRef.current;
@@ -152,10 +153,14 @@ export function TeacherApp() {
       },
       {
         body: fg.roster,
-        target: '[data-tour="settings-roster"]',
+        target: showOverviewRoster ? '[data-tour="roster"]' : '[data-tour="settings-roster"]',
         onEnter: () => {
-          setForceRosterOpen(true);
-          goTab('settings');
+          if (showOverviewRoster) {
+            goHomeOverview();
+          } else {
+            setForceRosterOpen(true);
+            goTab('settings');
+          }
         },
       },
       {
@@ -204,7 +209,7 @@ export function TeacherApp() {
     ];
     return steps;
     // eslint-disable-next-line react-hooks/exhaustive-deps -- goTab/setState are stable enough for guide
-  }, [features, fg]);
+  }, [features, fg, showOverviewRoster]);
 
   // If the active tab was gated off, fall back to overview.
   const safeTab =
