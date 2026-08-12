@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   AppBar,
   EmptyState,
@@ -23,6 +24,12 @@ import { hasSeen, useMarkOnboardingSeen, useOnboarding } from '@/hooks/useOnboar
 import { TEACHER_WELCOME_KEY } from '@/services/onboarding';
 import { t } from '@/i18n';
 import { todayIso } from '@/services/contact';
+import {
+  parseTeacherPath,
+  teacherPath,
+  teacherPreviewBase,
+  type TeacherOverviewView,
+} from '@/lib/shellPaths';
 import { ClassManager } from './ClassManager';
 import { FeatureSettings } from './FeatureSettings';
 import { AnnouncementsPanel } from './AnnouncementsPanel';
@@ -38,15 +45,19 @@ import { TeacherMessengerDock } from './TeacherMessengerDock';
 import { ParentApp } from '@/features/parent/ParentApp';
 import type { Student } from '@/types/domain';
 
-type OverviewView = 'home' | 'calendar' | 'leave' | 'consent';
+type OverviewView = TeacherOverviewView;
 
 // Teacher shell (SPEC 2.2 / 3.2). Tabs follow class feature switches (SPEC L16).
 
 export function TeacherApp() {
   const { signOut } = useAuth();
   const { toast } = useToast();
-  const [tab, setTab] = useState('overview');
-  const [overviewView, setOverviewView] = useState<OverviewView>('home');
+  const navigate = useNavigate();
+  const location = useLocation();
+  const shell = parseTeacherPath(location.pathname);
+  const tab = shell.tab;
+  const overviewView = shell.overviewView;
+  const previewStudentId = shell.previewStudentId;
   const [overviewTrackOpen, setOverviewTrackOpen] = useState(false);
   const [openTrackingFor, setOpenTrackingFor] = useState<'announcements' | 'contact' | null>(
     null,
@@ -54,7 +65,6 @@ export function TeacherApp() {
   const [msgOpenSignal, setMsgOpenSignal] = useState(0);
   const [featureGuideOpen, setFeatureGuideOpen] = useState(false);
   const [forceRosterOpen, setForceRosterOpen] = useState(false);
-  const [previewStudentId, setPreviewStudentId] = useState<string | null>(null);
   const [tabSlideOn, setTabSlideOn] = useState(
     () => localStorage.getItem('cc_tab_slide') !== '0',
   );
@@ -101,33 +111,48 @@ export function TeacherApp() {
   const showOverviewRoster = !cls || boundCount === undefined || boundCount === 0;
   const previewStudent: Student | undefined = roster?.find((s) => s.id === previewStudentId);
 
+  const goTo = (next: { tab: string; overviewView?: OverviewView; previewStudentId?: string | null }) => {
+    const path = teacherPath({
+      tab: next.tab,
+      overviewView: next.overviewView ?? 'home',
+      previewStudentId: next.previewStudentId ?? null,
+    });
+    if (path === location.pathname) return;
+    const order = tabOrderRef.current;
+    const from = order.indexOf(tab);
+    const to = order.indexOf(next.tab);
+    if (
+      !next.previewStudentId &&
+      !previewStudentId &&
+      tabSlideOn &&
+      from >= 0 &&
+      to >= 0 &&
+      from !== to
+    ) {
+      setSlideDir(to > from ? 'right' : 'left');
+    } else {
+      setSlideDir(null);
+    }
+    navigate(path);
+  };
+
   const openParentPreview = () => {
     if (!roster || roster.length === 0) {
       toast('請先加入學生，才能預覽家長畫面');
       return;
     }
-    setPreviewStudentId(roster[0].id);
+    navigate(teacherPreviewBase(roster[0].id));
   };
 
   const goTab = (next: string) => {
-    const order = tabOrderRef.current;
-    const from = order.indexOf(tab);
-    const to = order.indexOf(next);
-    if (tabSlideOn && from >= 0 && to >= 0 && from !== to) {
-      setSlideDir(to > from ? 'right' : 'left');
-    } else {
-      setSlideDir(null);
-    }
     setOpenTrackingFor(null);
-    setOverviewView('home');
-    setTab(next);
+    goTo({ tab: next, overviewView: 'home' });
   };
 
   const goTracking = (which: 'announcements' | 'contact') => {
     setOverviewTrackOpen(false);
-    setOverviewView('home');
     setOpenTrackingFor(which);
-    setTab(which);
+    goTo({ tab: which, overviewView: 'home' });
   };
 
   const goOverviewView = (view: OverviewView, enabled?: boolean) => {
@@ -136,13 +161,11 @@ export function TeacherApp() {
       goTab('settings');
       return;
     }
-    setTab('overview');
-    setOverviewView(view);
+    goTo({ tab: 'overview', overviewView: view });
   };
 
   const goHomeOverview = () => {
-    setTab('overview');
-    setOverviewView('home');
+    goTo({ tab: 'overview', overviewView: 'home' });
   };
 
   const fg = copy.featureGuide;
@@ -261,8 +284,9 @@ export function TeacherApp() {
         mode="preview"
         previewStudent={previewStudent}
         previewRoster={roster}
-        onPreviewStudentChange={setPreviewStudentId}
-        onExitPreview={() => setPreviewStudentId(null)}
+        onPreviewStudentChange={(id) => navigate(teacherPreviewBase(id), { replace: true })}
+        onExitPreview={() => navigate(-1)}
+        historyBase={teacherPreviewBase(previewStudentId)}
       />
     );
   }
@@ -332,17 +356,17 @@ export function TeacherApp() {
       >
         {safeTab === 'overview' && overviewView === 'calendar' && (
           <div className="body" data-tour="panel-calendar">
-            <CalendarPanel classId={cls?.id} onBack={() => setOverviewView('home')} />
+            <CalendarPanel classId={cls?.id} onBack={() => goHomeOverview()} />
           </div>
         )}
         {safeTab === 'overview' && overviewView === 'leave' && (
           <div className="body" data-tour="panel-leave">
-            <LeavesPanel classId={cls?.id} onBack={() => setOverviewView('home')} />
+            <LeavesPanel classId={cls?.id} onBack={() => goHomeOverview()} />
           </div>
         )}
         {safeTab === 'overview' && overviewView === 'consent' && (
           <div className="body" data-tour="panel-consent">
-            <ConsentPanel classId={cls?.id} onBack={() => setOverviewView('home')} />
+            <ConsentPanel classId={cls?.id} onBack={() => goHomeOverview()} />
           </div>
         )}
 

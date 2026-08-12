@@ -50,7 +50,7 @@ export function JoinScreen() {
       await redeemInvite({ code, displayName: displayName.trim(), relation });
       await qc.invalidateQueries();
       toast('綁定成功，歡迎加入');
-      navigate('/p');
+      navigate('/p', { replace: true });
     } catch (e) {
       setErr(e instanceof Error ? e.message : '綁定失敗，請確認邀請碼');
     } finally {

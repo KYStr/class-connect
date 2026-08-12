@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { AppBar, EmptyState, Feature, PhoneShell, StatusBar, TabBar, Tour, useToast } from '@/ui';
 import type { SlideDir, TabItem } from '@/ui';
 import { useAuth } from '@/app/AuthProvider';
@@ -11,6 +12,7 @@ import { hasSeen, useMarkOnboardingSeen, useOnboarding } from '@/hooks/useOnboar
 import { PARENT_WELCOME_KEY } from '@/services/onboarding';
 import { t } from '@/i18n';
 import { todayIso } from '@/services/contact';
+import { parentPath, parseParentPath, type ParentSubView } from '@/lib/shellPaths';
 import type { ConsentForm, Student } from '@/types/domain';
 import { ParentAnnouncements } from './ParentAnnouncements';
 import { ParentContact } from './ParentContact';
@@ -21,7 +23,7 @@ import { ParentLeave } from './ParentLeave';
 import { ParentMessages } from './ParentMessages';
 import { ParentConsent } from './ParentConsent';
 
-type SubView = 'home' | 'calendar' | 'leave' | 'messages' | 'consent';
+type SubView = ParentSubView;
 
 export type ParentAppProps = {
   /** Teacher-only: render as the selected student would see it (read-only). */
@@ -30,6 +32,8 @@ export type ParentAppProps = {
   previewRoster?: Student[];
   onPreviewStudentChange?: (id: string) => void;
   onExitPreview?: () => void;
+  /** URL prefix for history sync (`/p` live, or `/t/preview/:id`). */
+  historyBase?: string;
 };
 
 // Parent shell (SPEC 2.1 / 3.1). High-freq: contact + announcements; low-freq tucked away.
@@ -39,12 +43,19 @@ export function ParentApp({
   previewRoster,
   onPreviewStudentChange,
   onExitPreview,
+  historyBase,
 }: ParentAppProps = {}) {
   const preview = mode === 'preview';
+  const base = historyBase ?? (preview ? undefined : '/p');
   const { signOut } = useAuth();
   const { toast } = useToast();
-  const [tab, setTab] = useState('home');
-  const [view, setView] = useState<SubView>('home');
+  const navigate = useNavigate();
+  const location = useLocation();
+  const shell = base ? parseParentPath(location.pathname) : null;
+  const [localTab, setLocalTab] = useState('home');
+  const [localView, setLocalView] = useState<SubView>('home');
+  const tab = shell?.tab ?? localTab;
+  const view = shell?.view ?? localView;
   const [consentFocus, setConsentFocus] = useState<ConsentForm | null>(null);
   const [tabSlideOn] = useState(() => localStorage.getItem('cc_tab_slide') !== '0');
   const [slideDir, setSlideDir] = useState<SlideDir>(null);
@@ -75,9 +86,29 @@ export function ParentApp({
       ? 'home'
       : tab;
 
+  const goTo = (next: { tab: string; view?: SubView }) => {
+    const nextView = next.view ?? 'home';
+    if (base) {
+      const path = parentPath({ tab: next.tab, view: nextView }, base);
+      if (path === location.pathname) return;
+      const order = tabOrderRef.current;
+      const from = order.indexOf(tab);
+      const to = order.indexOf(next.tab);
+      if (tabSlideOn && from >= 0 && to >= 0 && from !== to) {
+        setSlideDir(to > from ? 'right' : 'left');
+      } else {
+        setSlideDir(null);
+      }
+      navigate(path);
+      return;
+    }
+    setLocalView(nextView);
+    setLocalTab(next.tab);
+  };
+
   const goHome = () => {
-    setView('home');
     setConsentFocus(null);
+    goTo({ tab: 'home', view: 'home' });
   };
 
   const openQa = (next: SubView, enabled: boolean | undefined) => {
@@ -85,8 +116,7 @@ export function ParentApp({
       toast('老師尚未開啟此功能');
       return;
     }
-    setTab('home');
-    setView(next);
+    goTo({ tab: 'home', view: next });
   };
 
   const tabs: TabItem[] = [
@@ -116,17 +146,8 @@ export function ParentApp({
   };
 
   const onSelectTab = (key: string) => {
-    const order = tabOrderRef.current;
-    const from = order.indexOf(tab);
-    const to = order.indexOf(key);
-    if (tabSlideOn && from >= 0 && to >= 0 && from !== to) {
-      setSlideDir(to > from ? 'right' : 'left');
-    } else {
-      setSlideDir(null);
-    }
-    setView('home');
     setConsentFocus(null);
-    setTab(key);
+    goTo({ tab: key, view: 'home' });
   };
 
   if (preview && !child) {
@@ -285,7 +306,7 @@ export function ParentApp({
                   style={{ marginTop: 10, background: 'var(--accent-soft)', color: '#c26a1f' }}
                   onClick={() => {
                     setConsentFocus(pendingConsent![0]);
-                    setView('consent');
+                    goTo({ tab: 'home', view: 'consent' });
                   }}
                 >
                   ✍️ 立即線上簽署

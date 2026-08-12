@@ -31,7 +31,7 @@ export function LoginScreen() {
       .eq('id', uid)
       .maybeSingle();
     const role = (profile?.role as Role | undefined) ?? 'teacher';
-    navigate(role === 'parent' ? '/p' : '/t');
+    navigate(role === 'parent' ? '/p' : '/t', { replace: true });
   };
 
   const submit = async () => {
@@ -50,7 +50,7 @@ export function LoginScreen() {
           displayName: displayName || '老師',
         });
         toast('註冊成功，已登入');
-        navigate('/t');
+        navigate('/t', { replace: true });
       } else {
         await signInWithPassword(email, password);
         toast('登入成功');
