@@ -8,7 +8,7 @@ import { addStudents, countGuardiansByStudent, parseRosterCsv } from '@/services
 import { activeInviteByStudent, createInvite, listInvites } from '@/services/invites';
 import type { Student } from '@/types/domain';
 import { InviteQrSheet } from './InviteQrSheet';
-import { openInvitePrintSheet } from './InvitePrintSheet';
+import { InvitePrintPreview, type PrintInviteRow } from './InvitePrintSheet';
 
 // Teacher setup (SPEC 7.1 / DEVELOPMENT.md §7.1): create class → add students → invite parents.
 export function ClassManager() {
@@ -67,6 +67,7 @@ function RosterManager({ classId, className }: { classId: string; className: str
   const [csv, setCsv] = useState('');
   const [sheetStudent, setSheetStudent] = useState<Student | null>(null);
   const [printBusy, setPrintBusy] = useState(false);
+  const [printRows, setPrintRows] = useState<PrintInviteRow[] | null>(null);
 
   const activeByStudent = activeInviteByStudent(invites ?? []);
 
@@ -149,9 +150,9 @@ function RosterManager({ classId, className }: { classId: string; className: str
                       toast('沒有可列印的邀請');
                       return;
                     }
-                    await openInvitePrintSheet(className, rows);
+                    setPrintRows(rows);
                   } catch (e) {
-                    toast(e instanceof Error ? e.message : '無法開啟列印');
+                    toast(e instanceof Error ? e.message : '無法準備邀請單');
                   } finally {
                     setPrintBusy(false);
                   }
@@ -225,6 +226,14 @@ function RosterManager({ classId, className }: { classId: string; className: str
               onSuccess: () => toast('已重新產生邀請（舊連結失效）'),
             });
           }}
+        />
+      )}
+
+      {printRows && (
+        <InvitePrintPreview
+          className={className}
+          rows={printRows}
+          onClose={() => setPrintRows(null)}
         />
       )}
     </div>

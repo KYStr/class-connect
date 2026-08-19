@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react';
+import { Button, GhostButton } from '@/ui';
 import { inviteLink, inviteQrDataUrl } from '@/lib/inviteQr';
 import type { Student } from '@/types/domain';
 
@@ -6,70 +8,83 @@ export type PrintInviteRow = {
   code: string;
 };
 
-/** Open a print-friendly window with name + QR + short code + link for each student. */
-export async function openInvitePrintSheet(
-  className: string,
-  rows: PrintInviteRow[],
-): Promise<void> {
-  if (rows.length === 0) return;
+type Card = PrintInviteRow & { link: string; qr: string };
 
-  const cards = await Promise.all(
-    rows.map(async ({ student, code }) => {
-      const link = inviteLink(code);
-      const qr = await inviteQrDataUrl(link, 220);
-      return { student, code, link, qr };
-    }),
+type Props = {
+  className: string;
+  rows: PrintInviteRow[];
+  onClose: () => void;
+};
+
+/** In-app invite sheet preview (avoids blank popup tabs from async window.open). */
+export function InvitePrintPreview({ className, rows, onClose }: Props) {
+  const [cards, setCards] = useState<Card[] | null>(null);
+  const [err, setErr] = useState('');
+
+  useEffect(() => {
+    let alive = true;
+    void (async () => {
+      try {
+        const next = await Promise.all(
+          rows.map(async ({ student, code }) => {
+            const link = inviteLink(code);
+            const qr = await inviteQrDataUrl(link, 220);
+            return { student, code, link, qr };
+          }),
+        );
+        if (alive) setCards(next);
+      } catch (e) {
+        if (alive) setErr(e instanceof Error ? e.message : '無法產生邀請單');
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [rows]);
+
+  return (
+    <div className="invite-print-layer" role="dialog" aria-modal="true" aria-label="家長邀請單">
+      <div className="invite-print-toolbar no-print">
+        <div className="invite-print-toolbar-title">家長邀請單預覽</div>
+        <div className="invite-print-toolbar-actions">
+          <Button
+            tone="amber"
+            disabled={!cards?.length}
+            onClick={() => {
+              window.print();
+            }}
+          >
+            列印／存成 PDF
+          </Button>
+          <GhostButton onClick={onClose}>關閉</GhostButton>
+        </div>
+      </div>
+
+      <div className="invite-print-page">
+        <h1 className="invite-print-h1">
+          {className} · 家長邀請單
+        </h1>
+        <p className="invite-print-hint">
+          每位學生一組家庭邀請碼；爸媽可用同一 QR／連結綁定。掃描後註冊或登入即可。
+        </p>
+
+        {err && <div className="info" style={{ background: 'var(--pink-soft)', color: '#c33f4c' }}>{err}</div>}
+        {!cards && !err && <div className="invite-print-loading">產生 QR 中…</div>}
+        {cards && (
+          <div className="invite-print-grid">
+            {cards.map((c) => (
+              <article key={c.student.id} className="invite-print-card">
+                <div className="invite-print-name">
+                  {c.student.seat}　{c.student.name}
+                </div>
+                <img src={c.qr} alt="" width={160} height={160} />
+                <div className="invite-print-code">{c.code}</div>
+                <div className="invite-print-link">{c.link}</div>
+              </article>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
   );
-
-  const win = window.open('', '_blank', 'noopener,noreferrer');
-  if (!win) throw new Error('無法開啟列印視窗，請允許彈出視窗');
-
-  const esc = (s: string) =>
-    s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-
-  const body = cards
-    .map(
-      (c) => `
-      <article class="card">
-        <div class="name">${esc(c.student.seat)}　${esc(c.student.name)}</div>
-        <img src="${c.qr}" alt="QR" width="160" height="160" />
-        <div class="code">${esc(c.code)}</div>
-        <div class="link">${esc(c.link)}</div>
-      </article>`,
-    )
-    .join('');
-
-  win.document.write(`<!doctype html>
-<html lang="zh-Hant">
-<head>
-  <meta charset="utf-8" />
-  <title>${esc(className)} · 家長邀請單</title>
-  <style>
-    * { box-sizing: border-box; }
-    body { font-family: "Noto Sans TC", "Microsoft JhengHei", sans-serif; margin: 16px; color: #212a33; }
-    h1 { font-size: 18px; margin: 0 0 4px; }
-    .hint { font-size: 12px; color: #6b7280; margin-bottom: 16px; }
-    .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
-    .card {
-      border: 1px solid #d8dde3; border-radius: 12px; padding: 14px; text-align: center;
-      break-inside: avoid; page-break-inside: avoid;
-    }
-    .name { font-weight: 700; font-size: 15px; margin-bottom: 8px; }
-    .code { font-family: ui-monospace, monospace; font-size: 14px; letter-spacing: 0.08em; margin-top: 6px; }
-    .link { font-size: 10px; color: #6b7280; word-break: break-all; margin-top: 4px; }
-    @media print {
-      body { margin: 8mm; }
-      .no-print { display: none !important; }
-      .grid { grid-template-columns: repeat(2, 1fr); gap: 8mm; }
-    }
-  </style>
-</head>
-<body>
-  <button class="no-print" onclick="window.print()" style="margin-bottom:12px;padding:8px 14px;font-size:14px;">列印／存成 PDF</button>
-  <h1>${esc(className)} · 家長邀請單</h1>
-  <p class="hint">每位學生一組家庭邀請碼；爸媽可用同一 QR／連結綁定。掃描後註冊或登入即可。</p>
-  <div class="grid">${body}</div>
-</body>
-</html>`);
-  win.document.close();
 }
