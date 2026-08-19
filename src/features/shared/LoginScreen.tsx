@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { PhoneShell, StatusBar, Button, useToast } from '@/ui';
+import { useAuth } from '@/app/AuthProvider';
 import { signInWithPassword, signUp } from '@/services/auth';
 import { hasSupabaseEnv, supabase } from '@/lib/supabase';
 import type { Role } from '@/types/domain';
@@ -11,12 +12,24 @@ import type { Role } from '@/types/domain';
 export function LoginScreen() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { loading, session, profile, role } = useAuth();
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+
+  // Already signed in (e.g. opened /login or landed via old bookmark) → skip the form.
+  if (loading || (session && !profile)) {
+    return (
+      <div className="stage">
+        <PhoneShell chrome={<StatusBar />} children={<div className="login" />} />
+      </div>
+    );
+  }
+  if (role === 'teacher') return <Navigate to="/t" replace />;
+  if (role === 'parent') return <Navigate to="/p" replace />;
 
   const resolveRoleAndGo = async () => {
     const { data: userData } = await supabase.auth.getUser();
