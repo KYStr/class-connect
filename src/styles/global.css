@@ -2654,3 +2654,87 @@ select.in {
     border-radius: 0;
   }
 }
+
+/* ---------------- invite QR sheet / roster toolbar ---------------- */
+.invite-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.invite-sheet-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  pointer-events: none;
+}
+.invite-sheet-mask {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  background: rgba(33, 42, 51, 0.48);
+  cursor: pointer;
+  pointer-events: auto;
+}
+.invite-sheet {
+  position: relative;
+  z-index: 1;
+  width: min(420px, calc(100% - 28px));
+  margin: 0 14px 88px;
+  padding: 16px;
+  border-radius: var(--r-card);
+  background: var(--card);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-lift);
+  pointer-events: auto;
+  animation: fadeUp 0.22s ease;
+  text-align: center;
+}
+.invite-sheet-title {
+  font-size: 16px;
+  font-weight: 700;
+}
+.invite-sheet-sub {
+  font-size: 11.5px;
+  color: var(--muted);
+  margin-top: 4px;
+  line-height: 1.4;
+}
+.invite-qr-wrap {
+  display: flex;
+  justify-content: center;
+  margin: 14px 0 8px;
+}
+.invite-qr-wrap img {
+  border-radius: 8px;
+  background: #fff;
+}
+.invite-qr-ph {
+  width: 200px;
+  height: 200px;
+  border-radius: 8px;
+  background: var(--soft);
+}
+.invite-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 15px;
+  letter-spacing: 0.12em;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.invite-link-in {
+  margin-top: 0 !important;
+  font-size: 11px !important;
+}
+.invite-sheet-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 12px;
+}

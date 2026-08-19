@@ -1,6 +1,6 @@
 // Edge Function: redeem_invite (DEVELOPMENT.md §7.2). Atomic, security-definer style.
-// Validates the invite, binds the parent to the student, marks the invite used, and ensures
-// the conversation exists. Authenticates the caller via their JWT so parent_id is trustworthy.
+// Validates the invite, binds the parent to the student, and ensures the conversation exists.
+// Family invites are reusable (mom + dad) until revoked or expired. Authenticates via JWT.
 //
 // Implemented with plain fetch against Auth + PostgREST (no remote imports) so the isolate
 // boots instantly — importing supabase-js from a CDN cold-starts too slowly and gets killed.
@@ -66,20 +66,20 @@ Deno.serve(async (req: Request) => {
   const displayName = (body.displayName ?? '').trim();
   if (!code) return json({ error: 'missing_code' }, 400);
 
-  // 1) Validate invite.
+  // 1) Validate invite (reusable until revoked / expired).
   const invRes = await rest(
-    `invites?code=eq.${encodeURIComponent(code)}&select=id,class_id,student_id,used_at,expires_at`,
+    `invites?code=eq.${encodeURIComponent(code)}&select=id,class_id,student_id,expires_at,revoked_at`,
   );
   if (!invRes.ok) return json({ error: 'lookup_failed' }, 500);
   const invite = ((await invRes.json()) as Array<{
     id: string;
     class_id: string;
     student_id: string | null;
-    used_at: string | null;
     expires_at: string | null;
+    revoked_at: string | null;
   }>)[0];
   if (!invite) return json({ error: 'invalid_code' }, 404);
-  if (invite.used_at) return json({ error: 'code_used' }, 409);
+  if (invite.revoked_at) return json({ error: 'code_revoked' }, 410);
   if (invite.expires_at && new Date(invite.expires_at) < new Date())
     return json({ error: 'code_expired' }, 410);
   if (!invite.student_id) return json({ error: 'invite_has_no_student' }, 422);
@@ -114,8 +114,8 @@ Deno.serve(async (req: Request) => {
   });
   if (!gRes.ok) return json({ error: 'bind_failed', detail: await gRes.text() }, 500);
 
-  // 4) Mark the invite used (guard against a race: only if still unused).
-  await rest(`invites?id=eq.${invite.id}&used_at=is.null`, {
+  // 4) Audit last redeem (does not lock the code — second guardian can reuse).
+  await rest(`invites?id=eq.${invite.id}&revoked_at=is.null`, {
     method: 'PATCH',
     headers: { Prefer: 'return=minimal' },
     body: JSON.stringify({ used_at: new Date().toISOString(), used_by: user.id }),

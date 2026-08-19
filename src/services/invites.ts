@@ -6,6 +6,7 @@ type InviteRow = {
   student_id: string | null;
   used_at: string | null;
   expires_at: string | null;
+  revoked_at: string | null;
 };
 
 export interface Invite {
@@ -14,6 +15,7 @@ export interface Invite {
   studentId: string | null;
   usedAt: string | null;
   expiresAt: string | null;
+  revokedAt: string | null;
 }
 
 function toInvite(r: InviteRow): Invite {
@@ -23,6 +25,7 @@ function toInvite(r: InviteRow): Invite {
     studentId: r.student_id,
     usedAt: r.used_at,
     expiresAt: r.expires_at,
+    revokedAt: r.revoked_at,
   };
 }
 
@@ -36,6 +39,7 @@ function genCode(len = 8): string {
   return out;
 }
 
+/** Create a family invite; revokes any previous active invite for the same student. */
 export async function createInvite(input: {
   classId: string;
   studentId: string;
@@ -44,6 +48,15 @@ export async function createInvite(input: {
   const { data: userData } = await supabase.auth.getUser();
   const createdBy = userData.user?.id;
   if (!createdBy) throw new Error('Not authenticated');
+
+  const now = new Date().toISOString();
+  const { error: revokeErr } = await supabase
+    .from('invites')
+    .update({ revoked_at: now })
+    .eq('student_id', input.studentId)
+    .is('revoked_at', null);
+  if (revokeErr) throw revokeErr;
+
   const { data, error } = await supabase
     .from('invites')
     .insert({
@@ -53,7 +66,7 @@ export async function createInvite(input: {
       created_by: createdBy,
       ...(input.expiresAt ? { expires_at: input.expiresAt } : {}),
     })
-    .select('id, code, student_id, used_at, expires_at')
+    .select('id, code, student_id, used_at, expires_at, revoked_at')
     .single();
   if (error) throw error;
   return toInvite(data as InviteRow);
@@ -62,10 +75,21 @@ export async function createInvite(input: {
 export async function listInvites(classId: string): Promise<Invite[]> {
   const { data, error } = await supabase
     .from('invites')
-    .select('id, code, student_id, used_at, expires_at')
-    .eq('class_id', classId);
+    .select('id, code, student_id, used_at, expires_at, revoked_at')
+    .eq('class_id', classId)
+    .order('created_at', { ascending: false });
   if (error) throw error;
   return ((data ?? []) as InviteRow[]).map(toInvite);
+}
+
+/** Active (not revoked) invite per student — latest wins. */
+export function activeInviteByStudent(invites: Invite[]): Map<string, Invite> {
+  const map = new Map<string, Invite>();
+  for (const inv of invites) {
+    if (!inv.studentId || inv.revokedAt) continue;
+    if (!map.has(inv.studentId)) map.set(inv.studentId, inv);
+  }
+  return map;
 }
 
 /** Parent binding via the atomic security-definer Edge Function (DEVELOPMENT.md §7.2). */

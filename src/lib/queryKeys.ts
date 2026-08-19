@@ -15,7 +15,11 @@ export const queryKeys = {
   students: {
     roster: (classId: string) => ['students', 'roster', classId] as const,
     boundCount: (classId: string) => ['students', 'bound', classId] as const,
+    guardianCounts: (classId: string) => ['students', 'guardians', classId] as const,
     mine: () => ['students', 'mine'] as const,
+  },
+  invites: {
+    forClass: (classId: string) => ['invites', classId] as const,
   },
   announcements: {
     list: (classId: string) => ['announcements', classId] as const,

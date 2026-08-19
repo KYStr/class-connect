@@ -4,8 +4,11 @@ import { Button, Card, EmptyState, GhostButton, useToast } from '@/ui';
 import { queryKeys } from '@/lib/queryKeys';
 import { useMyClasses, useRoster } from '@/hooks/useClasses';
 import { createClass } from '@/services/classes';
-import { addStudents, parseRosterCsv } from '@/services/students';
-import { createInvite, listInvites } from '@/services/invites';
+import { addStudents, countGuardiansByStudent, parseRosterCsv } from '@/services/students';
+import { activeInviteByStudent, createInvite, listInvites } from '@/services/invites';
+import type { Student } from '@/types/domain';
+import { InviteQrSheet } from './InviteQrSheet';
+import { openInvitePrintSheet } from './InvitePrintSheet';
 
 // Teacher setup (SPEC 7.1 / DEVELOPMENT.md §7.1): create class → add students → invite parents.
 export function ClassManager() {
@@ -54,11 +57,40 @@ function RosterManager({ classId, className }: { classId: string; className: str
   const { toast } = useToast();
   const { data: roster } = useRoster(classId);
   const { data: invites } = useQuery({
-    queryKey: ['invites', classId],
+    queryKey: queryKeys.invites.forClass(classId),
     queryFn: () => listInvites(classId),
   });
+  const { data: guardianCounts } = useQuery({
+    queryKey: queryKeys.students.guardianCounts(classId),
+    queryFn: () => countGuardiansByStudent(classId),
+  });
   const [csv, setCsv] = useState('');
-  const [codes, setCodes] = useState<Record<string, string>>({});
+  const [sheetStudent, setSheetStudent] = useState<Student | null>(null);
+  const [printBusy, setPrintBusy] = useState(false);
+
+  const activeByStudent = activeInviteByStudent(invites ?? []);
+
+  const inviteMut = useMutation({
+    mutationFn: (studentId: string) => createInvite({ classId, studentId }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: queryKeys.invites.forClass(classId) });
+      toast('邀請已產生');
+    },
+    onError: (e) => toast(e instanceof Error ? e.message : '產生邀請碼失敗'),
+  });
+
+  const batchInviteMut = useMutation({
+    mutationFn: async (studentIds: string[]) => {
+      for (const id of studentIds) {
+        await createInvite({ classId, studentId: id });
+      }
+    },
+    onSuccess: (_d, ids) => {
+      void qc.invalidateQueries({ queryKey: queryKeys.invites.forClass(classId) });
+      toast(`已為 ${ids.length} 位學生產生邀請`);
+    },
+    onError: (e) => toast(e instanceof Error ? e.message : '批次產生失敗'),
+  });
 
   const addMut = useMutation({
     mutationFn: () => addStudents(classId, parseRosterCsv(csv)),
@@ -70,64 +102,92 @@ function RosterManager({ classId, className }: { classId: string; className: str
     onError: (e) => toast(e instanceof Error ? e.message : '加入失敗'),
   });
 
-  const inviteMut = useMutation({
-    mutationFn: (studentId: string) => createInvite({ classId, studentId }),
-    onSuccess: (inv) => {
-      setCodes((m) => ({ ...m, [inv.studentId as string]: inv.code }));
-      qc.invalidateQueries({ queryKey: ['invites', classId] });
-    },
-    onError: (e) => toast(e instanceof Error ? e.message : '產生邀請碼失敗'),
-  });
-
   useEffect(() => {
-    if ((invites ?? []).some((i) => i.usedAt)) {
+    const anyBound = [...(guardianCounts?.values() ?? [])].some((n) => n > 0);
+    if (anyBound) {
       void qc.invalidateQueries({ queryKey: queryKeys.students.boundCount(classId) });
     }
-  }, [invites, classId, qc]);
+  }, [guardianCounts, classId, qc]);
 
-  const usedByStudent = new Map<string, boolean>();
-  (invites ?? []).forEach((i) => {
-    if (i.studentId) usedByStudent.set(i.studentId, Boolean(i.usedAt) || usedByStudent.get(i.studentId) === true);
-  });
+  const ensurePrintRows = async () => {
+    const list = roster ?? [];
+    const missing = list.filter((s) => !activeByStudent.get(s.id)).map((s) => s.id);
+    if (missing.length > 0) {
+      await batchInviteMut.mutateAsync(missing);
+      const fresh = await listInvites(classId);
+      const map = activeInviteByStudent(fresh);
+      return list
+        .map((s) => {
+          const inv = map.get(s.id);
+          return inv ? { student: s, code: inv.code } : null;
+        })
+        .filter((r): r is { student: Student; code: string } => Boolean(r));
+    }
+    return list
+      .map((s) => {
+        const inv = activeByStudent.get(s.id);
+        return inv ? { student: s, code: inv.code } : null;
+      })
+      .filter((r): r is { student: Student; code: string } => Boolean(r));
+  };
 
-  const linkFor = (code: string) => `${window.location.origin}/join/${code}`;
+  const sheetCode = sheetStudent ? activeByStudent.get(sheetStudent.id)?.code : undefined;
 
   return (
     <div className="roster-stack">
       <Card label={`👩‍🏫 ${className} · 名單（${roster?.length ?? 0}）`}>
+        {(roster?.length ?? 0) > 0 && (
+          <div className="invite-toolbar">
+            <GhostButton
+              disabled={printBusy || batchInviteMut.isPending || !roster?.length}
+              onClick={() => {
+                void (async () => {
+                  setPrintBusy(true);
+                  try {
+                    const rows = await ensurePrintRows();
+                    if (rows.length === 0) {
+                      toast('沒有可列印的邀請');
+                      return;
+                    }
+                    await openInvitePrintSheet(className, rows);
+                  } catch (e) {
+                    toast(e instanceof Error ? e.message : '無法開啟列印');
+                  } finally {
+                    setPrintBusy(false);
+                  }
+                })();
+              }}
+            >
+              {printBusy || batchInviteMut.isPending ? '準備中…' : '列印／匯出邀請單'}
+            </GhostButton>
+          </div>
+        )}
         {roster && roster.length > 0 ? (
           roster.map((s) => {
-            const code = codes[s.id];
-            const bound = usedByStudent.get(s.id);
+            const inv = activeByStudent.get(s.id);
+            const gCount = guardianCounts?.get(s.id) ?? 0;
             return (
               <div key={s.id} className="rl" style={{ flexWrap: 'wrap' }}>
                 <div className="seat">{s.seat}</div>
                 <div className="nm">{s.name}</div>
-                {bound ? (
-                  <span className="st ok">已綁定</span>
+                {gCount > 0 ? (
+                  <span className="st ok">已綁定 {gCount} 位</span>
+                ) : (
+                  <span className="st">未綁定</span>
+                )}
+                {inv ? (
+                  <button className="read-btn" type="button" onClick={() => setSheetStudent(s)}>
+                    顯示邀請
+                  </button>
                 ) : (
                   <button
                     className="read-btn"
+                    type="button"
                     onClick={() => inviteMut.mutate(s.id)}
                     disabled={inviteMut.isPending}
                   >
                     產生邀請
                   </button>
-                )}
-                {code && (
-                  <div style={{ width: '100%', marginTop: 6, display: 'flex', gap: 6 }}>
-                    <input className="in" style={{ marginTop: 0, fontSize: 11 }} readOnly value={linkFor(code)} />
-                    <button
-                      className="addbtn"
-                      title="複製連結"
-                      onClick={() => {
-                        void navigator.clipboard.writeText(linkFor(code));
-                        toast('已複製邀請連結');
-                      }}
-                    >
-                      ⧉
-                    </button>
-                  </div>
                 )}
               </div>
             );
@@ -152,6 +212,21 @@ function RosterManager({ classId, className }: { classId: string; className: str
           {addMut.isPending ? '加入中…' : '＋ 加入名單'}
         </GhostButton>
       </Card>
+
+      {sheetStudent && sheetCode && (
+        <InviteQrSheet
+          student={sheetStudent}
+          code={sheetCode}
+          guardianCount={guardianCounts?.get(sheetStudent.id) ?? 0}
+          busy={inviteMut.isPending}
+          onClose={() => setSheetStudent(null)}
+          onRegenerate={() => {
+            inviteMut.mutate(sheetStudent.id, {
+              onSuccess: () => toast('已重新產生邀請（舊連結失效）'),
+            });
+          }}
+        />
+      )}
     </div>
   );
 }

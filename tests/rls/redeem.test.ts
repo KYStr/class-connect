@@ -8,6 +8,7 @@ describe('redeem_invite Edge Function', () => {
   const admin = adminClient();
   let teacher: { id: string };
   let parent: { id: string; email: string; password: string };
+  let parent2: { id: string; email: string; password: string };
   let classId: string;
   let studentId: string;
   let code: string;
@@ -15,6 +16,7 @@ describe('redeem_invite Edge Function', () => {
   beforeAll(async () => {
     teacher = await createUser(admin, 'teacher', 'Teacher');
     parent = await createUser(admin, 'parent', 'Parent');
+    parent2 = await createUser(admin, 'parent', 'Parent2');
 
     classId = (
       await admin.from('classes').insert({ teacher_id: teacher.id, name: 'C' }).select('id').single()
@@ -50,7 +52,7 @@ describe('redeem_invite Edge Function', () => {
     expect(res.status).toBe(401);
   });
 
-  it('binds parent to student and marks invite used', async () => {
+  it('binds parent to student and records last redeem', async () => {
     const parentClient = await clientFor(parent.email, parent.password);
     const token = (await parentClient.auth.getSession()).data.session!.access_token;
 
@@ -66,19 +68,46 @@ describe('redeem_invite Edge Function', () => {
     const { data: kids } = await parentClient.from('students').select('id');
     expect((kids ?? []).map((k) => k.id)).toEqual([studentId]);
 
-    // Invite is now used.
-    const { data: inv } = await admin.from('invites').select('used_at, used_by').eq('code', code).single();
+    // Last redeem is audited; code stays reusable.
+    const { data: inv } = await admin.from('invites').select('used_at, used_by, revoked_at').eq('code', code).single();
     expect(inv!.used_at).toBeTruthy();
     expect(inv!.used_by).toBe(parent.id);
+    expect(inv!.revoked_at).toBeNull();
   });
 
-  it('rejects an already-used code', async () => {
+  it('allows a second parent to redeem the same family invite', async () => {
+    const parentClient = await clientFor(parent2.email, parent2.password);
+    const token = (await parentClient.auth.getSession()).data.session!.access_token;
+    const { status, json } = await callRedeem(token, {
+      code,
+      displayName: '另一位家長',
+      relation: '父親',
+    });
+    expect(status).toBe(200);
+    expect(json).toMatchObject({ studentId, classId });
+
+    const { data: kids } = await parentClient.from('students').select('id');
+    expect((kids ?? []).map((k) => k.id)).toEqual([studentId]);
+
+    const { count } = await admin
+      .from('guardianships')
+      .select('*', { count: 'exact', head: true })
+      .eq('student_id', studentId);
+    expect(count).toBe(2);
+  });
+
+  it('rejects a revoked code', async () => {
+    await admin
+      .from('invites')
+      .update({ revoked_at: new Date().toISOString() })
+      .eq('code', code);
+
     const parentClient = anonClient();
     await parentClient.auth.signInWithPassword({ email: parent.email, password: parent.password });
     const token = (await parentClient.auth.getSession()).data.session!.access_token;
     const { status, json } = await callRedeem(token, { code, displayName: 'x' });
-    expect(status).toBe(409);
-    expect(json).toMatchObject({ error: 'code_used' });
+    expect(status).toBe(410);
+    expect(json).toMatchObject({ error: 'code_revoked' });
   });
 
   it('rejects an invalid code', async () => {

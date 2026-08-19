@@ -20,12 +20,22 @@ export async function getRoster(classId: string): Promise<Student[]> {
 
 /** How many roster students already have ≥1 parent account bound. */
 export async function countBoundStudents(classId: string): Promise<number> {
+  const counts = await countGuardiansByStudent(classId);
+  return [...counts.values()].filter((n) => n > 0).length;
+}
+
+/** Guardian count per student in a class (for multi-parent roster UI). */
+export async function countGuardiansByStudent(classId: string): Promise<Map<string, number>> {
   const { data, error } = await supabase
     .from('guardianships')
     .select('student_id, students!inner(class_id)')
     .eq('students.class_id', classId);
   if (error) throw error;
-  return new Set(((data ?? []) as { student_id: string }[]).map((r) => r.student_id)).size;
+  const map = new Map<string, number>();
+  for (const row of (data ?? []) as { student_id: string }[]) {
+    map.set(row.student_id, (map.get(row.student_id) ?? 0) + 1);
+  }
+  return map;
 }
 
 export async function getMyChildren(): Promise<Student[]> {
