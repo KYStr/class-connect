@@ -2833,27 +2833,36 @@ select.in {
 }
 
 @media print {
-  body * {
-    visibility: hidden !important;
+  /* Hide app chrome; invite layer is portaled on body so it is not clipped. */
+  html.printing-invites,
+  html.printing-invites body {
+    height: auto !important;
+    overflow: visible !important;
+    background: #fff !important;
   }
-  .invite-print-layer,
-  .invite-print-layer * {
-    visibility: visible !important;
+  html.printing-invites body > *:not(.invite-print-layer) {
+    display: none !important;
   }
-  .invite-print-layer {
+  html.printing-invites .invite-print-layer {
+    display: block !important;
     position: static !important;
     inset: auto !important;
     overflow: visible !important;
     background: #fff !important;
+    z-index: auto !important;
   }
-  .no-print {
+  html.printing-invites .no-print {
     display: none !important;
   }
-  .invite-print-page {
+  html.printing-invites .invite-print-page {
     max-width: none;
     padding: 0;
   }
-  .invite-print-grid {
+  html.printing-invites .invite-print-grid {
     gap: 8mm;
+  }
+  html.printing-invites .invite-print-card img {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
   }
 }

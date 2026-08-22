@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Button, GhostButton } from '@/ui';
 import { inviteLink, inviteQrDataUrl } from '@/lib/inviteQr';
 import type { Student } from '@/types/domain';
@@ -16,7 +17,9 @@ type Props = {
   onClose: () => void;
 };
 
-/** In-app invite sheet preview (avoids blank popup tabs from async window.open). */
+const PRINTING_CLASS = 'printing-invites';
+
+/** In-app invite sheet preview, portaled to body so print/PDF is not clipped by PhoneShell. */
 export function InvitePrintPreview({ className, rows, onClose }: Props) {
   const [cards, setCards] = useState<Card[] | null>(null);
   const [err, setErr] = useState('');
@@ -42,7 +45,16 @@ export function InvitePrintPreview({ className, rows, onClose }: Props) {
     };
   }, [rows]);
 
-  return (
+  useEffect(() => {
+    const cleanup = () => document.documentElement.classList.remove(PRINTING_CLASS);
+    window.addEventListener('afterprint', cleanup);
+    return () => {
+      cleanup();
+      window.removeEventListener('afterprint', cleanup);
+    };
+  }, []);
+
+  const node = (
     <div className="invite-print-layer" role="dialog" aria-modal="true" aria-label="家長邀請單">
       <div className="invite-print-toolbar no-print">
         <div className="invite-print-toolbar-title">家長邀請單預覽</div>
@@ -51,7 +63,11 @@ export function InvitePrintPreview({ className, rows, onClose }: Props) {
             tone="amber"
             disabled={!cards?.length}
             onClick={() => {
-              window.print();
+              document.documentElement.classList.add(PRINTING_CLASS);
+              // Let the class apply before the print dialog snapshots the page.
+              requestAnimationFrame(() => {
+                window.print();
+              });
             }}
           >
             列印／存成 PDF
@@ -61,14 +77,16 @@ export function InvitePrintPreview({ className, rows, onClose }: Props) {
       </div>
 
       <div className="invite-print-page">
-        <h1 className="invite-print-h1">
-          {className} · 家長邀請單
-        </h1>
+        <h1 className="invite-print-h1">{className} · 家長邀請單</h1>
         <p className="invite-print-hint">
           每位學生一組家庭邀請碼；爸媽可用同一 QR／連結綁定。掃描後註冊或登入即可。
         </p>
 
-        {err && <div className="info" style={{ background: 'var(--pink-soft)', color: '#c33f4c' }}>{err}</div>}
+        {err && (
+          <div className="info" style={{ background: 'var(--pink-soft)', color: '#c33f4c' }}>
+            {err}
+          </div>
+        )}
         {!cards && !err && <div className="invite-print-loading">產生 QR 中…</div>}
         {cards && (
           <div className="invite-print-grid">
@@ -87,4 +105,6 @@ export function InvitePrintPreview({ className, rows, onClose }: Props) {
       </div>
     </div>
   );
+
+  return createPortal(node, document.body);
 }
