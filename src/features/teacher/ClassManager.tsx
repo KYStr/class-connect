@@ -5,6 +5,7 @@ import { queryKeys } from '@/lib/queryKeys';
 import { useMyClasses, useRoster } from '@/hooks/useClasses';
 import { createClass } from '@/services/classes';
 import { addStudents, countGuardiansByStudent, normalizeSeat } from '@/services/students';
+import { parseRosterText, type ParsedRosterRow } from '@/services/rosterParse';
 import { activeInviteByStudent, createInvite, listInvites } from '@/services/invites';
 import type { Student } from '@/types/domain';
 import { InviteQrSheet } from './InviteQrSheet';
@@ -71,6 +72,8 @@ function RosterManager({ classId, className }: { classId: string; className: str
   const [oneName, setOneName] = useState('');
   const [seatCount, setSeatCount] = useState(DEFAULT_SEAT_COUNT);
   const [gridNames, setGridNames] = useState<Record<string, string>>({});
+  const [pasteText, setPasteText] = useState('');
+  const [draftRows, setDraftRows] = useState<ParsedRosterRow[] | null>(null);
   const [sheetStudent, setSheetStudent] = useState<Student | null>(null);
   const [printBusy, setPrintBusy] = useState(false);
   const [printRows, setPrintRows] = useState<PrintInviteRow[] | null>(null);
@@ -139,6 +142,32 @@ function RosterManager({ classId, className }: { classId: string; className: str
         for (const s of added) delete next[normalizeSeat(s.seat)];
         return next;
       });
+      toast(`已加入 ${added.length} 位學生`);
+    },
+    onError: (e) => toast(e instanceof Error ? e.message : '加入失敗'),
+  });
+
+  const parseMut = useMutation({
+    mutationFn: () => parseRosterText(pasteText),
+    onSuccess: (rows) => {
+      setDraftRows(rows);
+      toast(`辨識到 ${rows.length} 位，請確認後加入`);
+    },
+    onError: (e) => toast(e instanceof Error ? e.message : '辨識失敗'),
+  });
+
+  const addDraftMut = useMutation({
+    mutationFn: () => {
+      const rows = (draftRows ?? [])
+        .map((r) => ({ seat: normalizeSeat(r.seat), name: r.name.trim() }))
+        .filter((r) => r.seat && r.name && !usedSeats.has(r.seat));
+      if (rows.length === 0) throw new Error('沒有可加入的新座號（可能都已在名單中）');
+      return addStudents(classId, rows);
+    },
+    onSuccess: (added) => {
+      void qc.invalidateQueries({ queryKey: queryKeys.students.roster(classId) });
+      setDraftRows(null);
+      setPasteText('');
       toast(`已加入 ${added.length} 位學生`);
     },
     onError: (e) => toast(e instanceof Error ? e.message : '加入失敗'),
@@ -330,6 +359,103 @@ function RosterManager({ classId, className }: { classId: string; className: str
             {addOneMut.isPending ? '…' : '加入'}
           </GhostButton>
         </div>
+      </Card>
+
+      <Card label="✨ 智慧貼上名單">
+        <div className="roster-hint">
+          從 Excel／行政系統複製貼上即可（格式亂一點也行）。也可選 .txt／.csv 檔。辨識後請先確認再加入。
+        </div>
+        <textarea
+          className="ta"
+          value={pasteText}
+          onChange={(e) => setPasteText(e.target.value)}
+          placeholder={'例如：\n01 小恩\n2、小柔\n07,小宇'}
+          style={{ minHeight: 100 }}
+        />
+        <div className="roster-smart-actions">
+          <label className="roster-file-btn">
+            選擇檔案
+            <input
+              type="file"
+              accept=".txt,.csv,.tsv,text/plain,text/csv"
+              hidden
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                e.target.value = '';
+                if (!file) return;
+                void file.text().then((text) => {
+                  setPasteText(text);
+                  setDraftRows(null);
+                  toast(`已載入 ${file.name}`);
+                });
+              }}
+            />
+          </label>
+          <GhostButton
+            onClick={() => parseMut.mutate()}
+            disabled={parseMut.isPending || !pasteText.trim()}
+          >
+            {parseMut.isPending ? '辨識中…' : '辨識名單'}
+          </GhostButton>
+        </div>
+
+        {draftRows && (
+          <div className="roster-draft">
+            <div className="roster-draft-title">確認辨識結果（可修改）</div>
+            {draftRows.map((row, idx) => {
+              const seat = normalizeSeat(row.seat);
+              const taken = usedSeats.has(seat);
+              return (
+                <div key={`${seat}-${idx}`} className={`roster-draft-row${taken ? ' is-taken' : ''}`}>
+                  <input
+                    className="in roster-one-seat"
+                    value={row.seat}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setDraftRows((prev) =>
+                        (prev ?? []).map((r, i) => (i === idx ? { ...r, seat: v } : r)),
+                      );
+                    }}
+                    aria-label="座號"
+                  />
+                  <input
+                    className="in roster-one-name"
+                    value={row.name}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setDraftRows((prev) =>
+                        (prev ?? []).map((r, i) => (i === idx ? { ...r, name: v } : r)),
+                      );
+                    }}
+                    aria-label="姓名"
+                  />
+                  <span className="roster-draft-flag">{taken ? '已有' : ''}</span>
+                  <button
+                    type="button"
+                    className="ghost-btn roster-draft-del"
+                    onClick={() =>
+                      setDraftRows((prev) => (prev ?? []).filter((_, i) => i !== idx))
+                    }
+                  >
+                    刪
+                  </button>
+                </div>
+              );
+            })}
+            <div className="roster-smart-actions" style={{ marginTop: 10 }}>
+              <GhostButton onClick={() => setDraftRows(null)}>取消</GhostButton>
+              <Button
+                tone="amber"
+                onClick={() => addDraftMut.mutate()}
+                disabled={addDraftMut.isPending || draftRows.length === 0}
+              >
+                {addDraftMut.isPending
+                  ? '加入中…'
+                  : `確認加入 ${draftRows.filter((r) => !usedSeats.has(normalizeSeat(r.seat))).length} 位`}
+              </Button>
+            </div>
+          </div>
+        )}
       </Card>
 
       {sheetStudent && sheetCode && (
