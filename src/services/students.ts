@@ -62,6 +62,13 @@ export async function addStudents(
   return ((data ?? []) as StudentRow[]).map(toStudent);
 }
 
+/** Normalize numeric seats to 2 digits (7 → 07) so grid / single-add stay consistent. */
+export function normalizeSeat(seat: string): string {
+  const t = seat.trim();
+  if (/^\d+$/.test(t)) return t.padStart(2, '0');
+  return t;
+}
+
 /** Parse "seat,name" lines (one per row) into student rows. */
 export function parseRosterCsv(text: string): { seat: string; name: string }[] {
   return text
@@ -70,7 +77,7 @@ export function parseRosterCsv(text: string): { seat: string; name: string }[] {
     .filter(Boolean)
     .map((line) => {
       const [seat, ...rest] = line.split(/[,\t]/).map((s) => s.trim());
-      return { seat, name: rest.join(' ').trim() };
+      return { seat: normalizeSeat(seat), name: rest.join(' ').trim() };
     })
     .filter((r) => r.seat && r.name);
 }

@@ -1,14 +1,16 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button, Card, EmptyState, GhostButton, useToast } from '@/ui';
 import { queryKeys } from '@/lib/queryKeys';
 import { useMyClasses, useRoster } from '@/hooks/useClasses';
 import { createClass } from '@/services/classes';
-import { addStudents, countGuardiansByStudent, parseRosterCsv } from '@/services/students';
+import { addStudents, countGuardiansByStudent, normalizeSeat } from '@/services/students';
 import { activeInviteByStudent, createInvite, listInvites } from '@/services/invites';
 import type { Student } from '@/types/domain';
 import { InviteQrSheet } from './InviteQrSheet';
 import { InvitePrintPreview, type PrintInviteRow } from './InvitePrintSheet';
+
+const DEFAULT_SEAT_COUNT = 30;
 
 // Teacher setup (SPEC 7.1 / DEVELOPMENT.md §7.1): create class → add students → invite parents.
 export function ClassManager() {
@@ -64,12 +66,20 @@ function RosterManager({ classId, className }: { classId: string; className: str
     queryKey: queryKeys.students.guardianCounts(classId),
     queryFn: () => countGuardiansByStudent(classId),
   });
-  const [csv, setCsv] = useState('');
+
+  const [oneSeat, setOneSeat] = useState('');
+  const [oneName, setOneName] = useState('');
+  const [seatCount, setSeatCount] = useState(DEFAULT_SEAT_COUNT);
+  const [gridNames, setGridNames] = useState<Record<string, string>>({});
   const [sheetStudent, setSheetStudent] = useState<Student | null>(null);
   const [printBusy, setPrintBusy] = useState(false);
   const [printRows, setPrintRows] = useState<PrintInviteRow[] | null>(null);
 
   const activeByStudent = activeInviteByStudent(invites ?? []);
+  const usedSeats = useMemo(
+    () => new Set((roster ?? []).map((s) => normalizeSeat(s.seat))),
+    [roster],
+  );
 
   const inviteMut = useMutation({
     mutationFn: (studentId: string) => createInvite({ classId, studentId }),
@@ -93,11 +103,42 @@ function RosterManager({ classId, className }: { classId: string; className: str
     onError: (e) => toast(e instanceof Error ? e.message : '批次產生失敗'),
   });
 
-  const addMut = useMutation({
-    mutationFn: () => addStudents(classId, parseRosterCsv(csv)),
+  const addOneMut = useMutation({
+    mutationFn: () => {
+      const seat = normalizeSeat(oneSeat);
+      const name = oneName.trim();
+      if (!seat || !name) throw new Error('請填寫座號與姓名');
+      if (usedSeats.has(seat)) throw new Error(`座號 ${seat} 已在名單中`);
+      return addStudents(classId, [{ seat, name }]);
+    },
     onSuccess: (added) => {
-      qc.invalidateQueries({ queryKey: queryKeys.students.roster(classId) });
-      setCsv('');
+      void qc.invalidateQueries({ queryKey: queryKeys.students.roster(classId) });
+      setOneSeat('');
+      setOneName('');
+      toast(`已加入 ${added[0]?.name ?? '學生'}`);
+    },
+    onError: (e) => toast(e instanceof Error ? e.message : '加入失敗'),
+  });
+
+  const addGridMut = useMutation({
+    mutationFn: () => {
+      const rows: { seat: string; name: string }[] = [];
+      for (let i = 1; i <= seatCount; i++) {
+        const seat = normalizeSeat(String(i));
+        if (usedSeats.has(seat)) continue;
+        const name = (gridNames[seat] ?? '').trim();
+        if (name) rows.push({ seat, name });
+      }
+      if (rows.length === 0) throw new Error('請至少填一位學生姓名');
+      return addStudents(classId, rows);
+    },
+    onSuccess: (added) => {
+      void qc.invalidateQueries({ queryKey: queryKeys.students.roster(classId) });
+      setGridNames((prev) => {
+        const next = { ...prev };
+        for (const s of added) delete next[normalizeSeat(s.seat)];
+        return next;
+      });
       toast(`已加入 ${added.length} 位學生`);
     },
     onError: (e) => toast(e instanceof Error ? e.message : '加入失敗'),
@@ -122,17 +163,26 @@ function RosterManager({ classId, className }: { classId: string; className: str
           const inv = map.get(s.id);
           return inv ? { student: s, code: inv.code } : null;
         })
-        .filter((r): r is { student: Student; code: string } => Boolean(r));
+        .filter((r): r is PrintInviteRow => Boolean(r));
     }
     return list
       .map((s) => {
         const inv = activeByStudent.get(s.id);
         return inv ? { student: s, code: inv.code } : null;
       })
-      .filter((r): r is { student: Student; code: string } => Boolean(r));
+      .filter((r): r is PrintInviteRow => Boolean(r));
   };
 
   const sheetCode = sheetStudent ? activeByStudent.get(sheetStudent.id)?.code : undefined;
+  const filledGridCount = useMemo(() => {
+    let n = 0;
+    for (let i = 1; i <= seatCount; i++) {
+      const seat = normalizeSeat(String(i));
+      if (usedSeats.has(seat)) continue;
+      if ((gridNames[seat] ?? '').trim()) n += 1;
+    }
+    return n;
+  }, [seatCount, gridNames, usedSeats]);
 
   return (
     <div className="roster-stack">
@@ -194,24 +244,92 @@ function RosterManager({ classId, className }: { classId: string; className: str
             );
           })
         ) : (
-          <EmptyState>尚未加入學生，用下方批次貼上名單</EmptyState>
+          <EmptyState>尚未加入學生，用下方座號表或逐筆加入</EmptyState>
         )}
       </Card>
 
-      <Card label="➕ 批次加入學生">
-        <div style={{ fontSize: 11.5, color: 'var(--muted)', marginBottom: 6 }}>
-          每行一位：<code>座號,姓名</code>（例如 <code>07,小宇</code>）
+      <Card label="✍️ 依座號填姓名（整班一次）">
+        <div className="roster-hint">
+          像點名表一樣填姓名即可；空白座號會略過。已在名單中的座號會顯示「已加入」。
         </div>
-        <textarea
-          className="ta"
-          value={csv}
-          onChange={(e) => setCsv(e.target.value)}
-          placeholder={'01,小恩\n02,小柔\n07,小宇'}
-          style={{ minHeight: 90 }}
-        />
-        <GhostButton style={{ marginTop: 8 }} onClick={() => addMut.mutate()} disabled={addMut.isPending}>
-          {addMut.isPending ? '加入中…' : '＋ 加入名單'}
-        </GhostButton>
+        <div className="roster-count-row">
+          <label htmlFor="seat-count">座號到</label>
+          <input
+            id="seat-count"
+            className="in roster-count-in"
+            type="number"
+            min={1}
+            max={60}
+            value={seatCount}
+            onChange={(e) => {
+              const n = Number(e.target.value);
+              if (!Number.isFinite(n)) return;
+              setSeatCount(Math.min(60, Math.max(1, Math.round(n))));
+            }}
+          />
+        </div>
+        <div className="roster-grid">
+          {Array.from({ length: seatCount }, (_, idx) => {
+            const seat = normalizeSeat(String(idx + 1));
+            const taken = usedSeats.has(seat);
+            return (
+              <label key={seat} className={`roster-grid-row${taken ? ' is-taken' : ''}`}>
+                <span className="roster-grid-seat">{seat}</span>
+                {taken ? (
+                  <span className="roster-grid-taken">已加入</span>
+                ) : (
+                  <input
+                    className="in roster-grid-name"
+                    value={gridNames[seat] ?? ''}
+                    onChange={(e) =>
+                      setGridNames((prev) => ({ ...prev, [seat]: e.target.value }))
+                    }
+                    placeholder="姓名"
+                    autoComplete="off"
+                  />
+                )}
+              </label>
+            );
+          })}
+        </div>
+        <Button
+          tone="amber"
+          style={{ marginTop: 10 }}
+          onClick={() => addGridMut.mutate()}
+          disabled={addGridMut.isPending || filledGridCount === 0}
+        >
+          {addGridMut.isPending ? '加入中…' : `一次加入已填 ${filledGridCount} 位`}
+        </Button>
+      </Card>
+
+      <Card label="➕ 逐筆加入學生">
+        <div className="roster-hint">補轉學生或臨時加 1～2 人時用這個最快。</div>
+        <div className="roster-one-row">
+          <input
+            className="in roster-one-seat"
+            value={oneSeat}
+            onChange={(e) => setOneSeat(e.target.value)}
+            placeholder="座號"
+            inputMode="numeric"
+            autoComplete="off"
+          />
+          <input
+            className="in roster-one-name"
+            value={oneName}
+            onChange={(e) => setOneName(e.target.value)}
+            placeholder="姓名"
+            autoComplete="off"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') addOneMut.mutate();
+            }}
+          />
+          <GhostButton
+            onClick={() => addOneMut.mutate()}
+            disabled={addOneMut.isPending || !oneSeat.trim() || !oneName.trim()}
+          >
+            {addOneMut.isPending ? '…' : '加入'}
+          </GhostButton>
+        </div>
       </Card>
 
       {sheetStudent && sheetCode && (
