@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase';
-import type { CalendarEvent, EventType } from '@/types/domain';
+import type { CalendarEvent, EventRemind, EventType } from '@/types/domain';
 
 // DEVELOPMENT.md §8.2 / §8.3 — calendar events (SPEC L10).
 
@@ -8,7 +8,14 @@ type EventRow = {
   title: string;
   event_date: string;
   type: EventType;
+  note: string | null;
+  remind: string | null;
 };
+
+function toRemind(value: string | null): EventRemind {
+  if (value === 'none' || value === 'eve' || value === 'morning') return value;
+  return 'morning';
+}
 
 function toEvent(r: EventRow): CalendarEvent {
   return {
@@ -16,13 +23,17 @@ function toEvent(r: EventRow): CalendarEvent {
     title: r.title,
     eventDate: r.event_date,
     type: r.type,
+    note: r.note,
+    remind: toRemind(r.remind),
   };
 }
+
+const EVENT_COLS = 'id, title, event_date, type, note, remind';
 
 export async function listEvents(classId: string): Promise<CalendarEvent[]> {
   const { data, error } = await supabase
     .from('events')
-    .select('id, title, event_date, type')
+    .select(EVENT_COLS)
     .eq('class_id', classId)
     .order('event_date', { ascending: true });
   if (error) throw error;
@@ -34,6 +45,8 @@ export async function addEvent(input: {
   title: string;
   eventDate: string;
   type: EventType;
+  note?: string;
+  remind?: EventRemind;
 }): Promise<CalendarEvent> {
   const { data, error } = await supabase
     .from('events')
@@ -42,8 +55,10 @@ export async function addEvent(input: {
       title: input.title,
       event_date: input.eventDate,
       type: input.type,
+      note: input.note?.trim() || null,
+      remind: input.remind ?? 'morning',
     })
-    .select('id, title, event_date, type')
+    .select(EVENT_COLS)
     .single();
   if (error) throw error;
   return toEvent(data as EventRow);

@@ -2,6 +2,7 @@ import { createBrowserRouter } from 'react-router-dom';
 import { AuthEntryRedirect } from './AuthEntryRedirect';
 import { RoleGate } from './RoleGate';
 import { LoginScreen } from '@/features/shared/LoginScreen';
+import { ResetPasswordScreen } from '@/features/shared/ResetPasswordScreen';
 import { JoinScreen } from '@/features/shared/JoinScreen';
 import { ParentApp } from '@/features/parent/ParentApp';
 import { TeacherApp } from '@/features/teacher/TeacherApp';
@@ -11,6 +12,7 @@ import { TeacherApp } from '@/features/teacher/TeacherApp';
 export const router = createBrowserRouter([
   { path: '/', element: <AuthEntryRedirect /> },
   { path: '/login', element: <LoginScreen /> },
+  { path: '/reset-password', element: <ResetPasswordScreen /> },
   { path: '/join/:code', element: <JoinScreen /> },
   {
     path: '/p/*',

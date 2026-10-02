@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { PhoneShell, StatusBar, Button, useToast } from '@/ui';
 import { useAuth } from '@/app/AuthProvider';
-import { signInWithPassword, signUp } from '@/services/auth';
+import { requestPasswordReset, signInWithPassword, signUp } from '@/services/auth';
 import { hasSupabaseEnv, supabase } from '@/lib/supabase';
 import type { Role } from '@/types/domain';
 
@@ -12,8 +12,8 @@ import type { Role } from '@/types/domain';
 export function LoginScreen() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { loading, session, profile, role } = useAuth();
-  const [mode, setMode] = useState<'signin' | 'signup'>('signin');
+  const { loading, session, profile, role, recovering } = useAuth();
+  const [mode, setMode] = useState<'signin' | 'signup' | 'reset'>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
@@ -28,6 +28,7 @@ export function LoginScreen() {
       </div>
     );
   }
+  if (recovering) return <Navigate to="/reset-password" replace />;
   if (role === 'teacher') return <Navigate to="/t" replace />;
   if (role === 'parent') return <Navigate to="/p" replace />;
 
@@ -49,12 +50,19 @@ export function LoginScreen() {
 
   const submit = async () => {
     setErr('');
-    if (!email || !password) {
-      setErr('請輸入 Email 與密碼');
+    if (!email || (mode !== 'reset' && !password)) {
+      setErr(mode === 'reset' ? '請輸入 Email' : '請輸入 Email 與密碼');
       return;
     }
     setBusy(true);
     try {
+      if (mode === 'reset') {
+        await requestPasswordReset(email);
+        toast('重設信已寄出，請到信箱開啟連結');
+        setMode('signin');
+        setPassword('');
+        return;
+      }
       if (mode === 'signup') {
         await signUp({
           email,
@@ -84,11 +92,15 @@ export function LoginScreen() {
           <div className="login">
             <div className="logo-badge">🎒</div>
             <div>
-              <h3>{mode === 'signup' ? '建立老師帳號' : '歡迎回來'}</h3>
+              <h3>
+                {mode === 'signup' ? '建立老師帳號' : mode === 'reset' ? '重設密碼' : '歡迎回來'}
+              </h3>
               <div className="sub">
                 {mode === 'signup'
                   ? '註冊後即可建立班級'
-                  : '老師與家長皆可由此登入'}
+                  : mode === 'reset'
+                    ? '我們會寄一封連結到這個 Email'
+                    : '老師與家長皆可由此登入'}
               </div>
             </div>
 
@@ -113,16 +125,18 @@ export function LoginScreen() {
                 placeholder="you@example.com"
               />
             </div>
-            <div className="field">
-              <label>密碼</label>
-              <input
-                className="in"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="至少 6 碼"
-              />
-            </div>
+            {mode !== 'reset' && (
+              <div className="field">
+                <label>密碼</label>
+                <input
+                  className="in"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="至少 6 碼"
+                />
+              </div>
+            )}
 
             {err && (
               <div className="info" style={{ background: 'var(--pink-soft)', color: '#c33f4c' }}>
@@ -131,16 +145,37 @@ export function LoginScreen() {
             )}
 
             <Button tone="amber" onClick={submit} disabled={busy}>
-              {busy ? '處理中…' : mode === 'signup' ? '註冊並進入後台' : '登入'}
+              {busy
+                ? '處理中…'
+                : mode === 'signup'
+                  ? '註冊並進入後台'
+                  : mode === 'reset'
+                    ? '寄出重設信'
+                    : '登入'}
             </Button>
+            {mode === 'signin' && (
+              <button
+                className="ghost-btn"
+                onClick={() => {
+                  setErr('');
+                  setMode('reset');
+                }}
+              >
+                忘記密碼？
+              </button>
+            )}
             <button
               className="ghost-btn"
               onClick={() => {
                 setErr('');
-                setMode(mode === 'signup' ? 'signin' : 'signup');
+                setMode(mode === 'signin' ? 'signup' : 'signin');
               }}
             >
-              {mode === 'signup' ? '已有帳號？改為登入' : '第一次使用？建立老師帳號'}
+              {mode === 'signup'
+                ? '已有帳號？改為登入'
+                : mode === 'reset'
+                  ? '返回登入'
+                  : '第一次使用？建立老師帳號'}
             </button>
 
             <div style={{ fontSize: 11.5, color: 'var(--muted)', lineHeight: 1.5 }}>

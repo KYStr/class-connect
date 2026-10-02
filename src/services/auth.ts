@@ -32,3 +32,17 @@ export async function signOut() {
   const { error } = await supabase.auth.signOut();
   if (error) throw error;
 }
+
+/** Email a password-reset link. Redirect must be allow-listed in Supabase Auth. */
+export async function requestPasswordReset(email: string) {
+  // Land on the site root (already the Auth Site URL) so the reset link is allow-listed.
+  // The recovery hash is detected on load and the app routes to /reset-password.
+  const redirectTo = window.location.origin;
+  const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo });
+  if (error) throw error;
+}
+
+export async function updatePassword(password: string) {
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) throw error;
+}

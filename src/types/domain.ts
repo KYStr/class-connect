@@ -124,11 +124,16 @@ export interface Photo {
   visibility: PhotoVisibility;
 }
 
+/** Phone-calendar alarm: none, previous evening 19:00, or same-day 07:00 (Taipei). */
+export type EventRemind = 'none' | 'eve' | 'morning';
+
 export interface CalendarEvent {
   id: string;
   title: string;
   eventDate: string;
   type: EventType;
+  note: string | null;
+  remind: EventRemind;
 }
 
 export interface Leave {

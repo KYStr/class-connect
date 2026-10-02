@@ -316,6 +316,8 @@ export type Database = {
           created_at: string
           event_date: string
           id: string
+          note: string | null
+          remind: string
           title: string
           type: Database["public"]["Enums"]["event_type_t"]
         }
@@ -324,6 +326,8 @@ export type Database = {
           created_at?: string
           event_date: string
           id?: string
+          note?: string | null
+          remind?: string
           title: string
           type: Database["public"]["Enums"]["event_type_t"]
         }
@@ -332,6 +336,8 @@ export type Database = {
           created_at?: string
           event_date?: string
           id?: string
+          note?: string | null
+          remind?: string
           title?: string
           type?: Database["public"]["Enums"]["event_type_t"]
         }

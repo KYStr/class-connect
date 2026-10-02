@@ -7,8 +7,9 @@ import { useAuth } from './AuthProvider';
  * does not force a fresh password entry when the session is still valid.
  */
 export function AuthEntryRedirect() {
-  const { loading, session, profile, role } = useAuth();
+  const { loading, session, profile, role, recovering } = useAuth();
 
+  if (recovering) return <Navigate to="/reset-password" replace />;
   if (loading || (session && !profile)) {
     return <div className="stage" style={{ alignItems: 'center' }} />;
   }

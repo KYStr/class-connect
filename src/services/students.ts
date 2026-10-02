@@ -48,6 +48,25 @@ export async function getMyChildren(): Promise<Student[]> {
   return ((data ?? []) as StudentRow[]).map(toStudent);
 }
 
+export async function updateStudent(
+  id: string,
+  input: { seat: string; name: string },
+): Promise<Student> {
+  const { data, error } = await supabase
+    .from('students')
+    .update({ seat: normalizeSeat(input.seat), name: input.name.trim() })
+    .eq('id', id)
+    .select('id, class_id, seat, name')
+    .single();
+  if (error) throw error;
+  return toStudent(data as StudentRow);
+}
+
+export async function deleteStudent(id: string): Promise<void> {
+  const { error } = await supabase.from('students').delete().eq('id', id);
+  if (error) throw error;
+}
+
 /** Batch add students (SPEC 7.1 / DEVELOPMENT.md §7.1 CSV batch). Input: [{ seat, name }]. */
 export async function addStudents(
   classId: string,

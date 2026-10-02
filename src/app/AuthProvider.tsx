@@ -12,6 +12,9 @@ interface AuthContextValue {
   /** P0 preview: pick a role locally when no backend is wired yet */
   previewAs: (role: Role) => void;
   signOut: () => Promise<void>;
+  /** True while the user arrived from a password-reset email and must set a new password. */
+  recovering: boolean;
+  clearRecovery: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -25,6 +28,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [previewRole, setPreviewRole] = useState<Role | null>(
     () => (localStorage.getItem(PREVIEW_KEY) as Role | null) ?? null,
   );
+  const [recovering, setRecovering] = useState(
+    () => typeof window !== 'undefined' && window.location.hash.includes('type=recovery'),
+  );
 
   useEffect(() => {
     if (!hasSupabaseEnv) {
@@ -37,7 +43,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(data.session);
       setLoading(false);
     });
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
+      if (event === 'PASSWORD_RECOVERY') setRecovering(true);
       setSession(s);
     });
     return () => {
@@ -91,9 +98,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const role: Role | null = profile?.role ?? previewRole;
 
+  const clearRecovery = () => setRecovering(false);
+
   const value = useMemo<AuthContextValue>(
-    () => ({ loading, session, profile, role, previewAs, signOut }),
-    [loading, session, profile, role],
+    () => ({ loading, session, profile, role, previewAs, signOut, recovering, clearRecovery }),
+    [loading, session, profile, role, recovering],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

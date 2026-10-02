@@ -4,7 +4,13 @@ import { Button, Card, EmptyState, GhostButton, useToast } from '@/ui';
 import { queryKeys } from '@/lib/queryKeys';
 import { useMyClasses, useRoster } from '@/hooks/useClasses';
 import { createClass } from '@/services/classes';
-import { addStudents, countGuardiansByStudent, normalizeSeat } from '@/services/students';
+import {
+  addStudents,
+  countGuardiansByStudent,
+  deleteStudent,
+  normalizeSeat,
+  updateStudent,
+} from '@/services/students';
 import { parseRosterText, type ParsedRosterRow } from '@/services/rosterParse';
 import { activeInviteByStudent, createInvite, listInvites } from '@/services/invites';
 import type { Student } from '@/types/domain';
@@ -74,6 +80,9 @@ function RosterManager({ classId, className }: { classId: string; className: str
   const [gridNames, setGridNames] = useState<Record<string, string>>({});
   const [pasteText, setPasteText] = useState('');
   const [draftRows, setDraftRows] = useState<ParsedRosterRow[] | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editSeat, setEditSeat] = useState('');
+  const [editName, setEditName] = useState('');
   const [sheetStudent, setSheetStudent] = useState<Student | null>(null);
   const [printBusy, setPrintBusy] = useState(false);
   const [printRows, setPrintRows] = useState<PrintInviteRow[] | null>(null);
@@ -104,6 +113,26 @@ function RosterManager({ classId, className }: { classId: string; className: str
       toast(`已為 ${ids.length} 位學生產生邀請`);
     },
     onError: (e) => toast(e instanceof Error ? e.message : '批次產生失敗'),
+  });
+
+  const updateMut = useMutation({
+    mutationFn: (id: string) => updateStudent(id, { seat: editSeat, name: editName }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: queryKeys.students.roster(classId) });
+      setEditingId(null);
+      toast('已更新學生');
+    },
+    onError: (e) => toast(e instanceof Error ? e.message : '更新失敗（座號可能重複）'),
+  });
+
+  const deleteMut = useMutation({
+    mutationFn: (id: string) => deleteStudent(id),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: queryKeys.students.roster(classId) });
+      void qc.invalidateQueries({ queryKey: queryKeys.students.guardianCounts(classId) });
+      toast('已刪除學生');
+    },
+    onError: (e) => toast(e instanceof Error ? e.message : '刪除失敗'),
   });
 
   const addOneMut = useMutation({
@@ -246,28 +275,88 @@ function RosterManager({ classId, className }: { classId: string; className: str
           roster.map((s) => {
             const inv = activeByStudent.get(s.id);
             const gCount = guardianCounts?.get(s.id) ?? 0;
+            const editing = editingId === s.id;
             return (
               <div key={s.id} className="rl" style={{ flexWrap: 'wrap' }}>
-                <div className="seat">{s.seat}</div>
-                <div className="nm">{s.name}</div>
+                {editing ? (
+                  <>
+                    <input
+                      className="in roster-one-seat"
+                      value={editSeat}
+                      onChange={(e) => setEditSeat(e.target.value)}
+                      aria-label="座號"
+                    />
+                    <input
+                      className="in roster-one-name"
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      aria-label="姓名"
+                    />
+                    <button
+                      className="read-btn"
+                      type="button"
+                      disabled={updateMut.isPending}
+                      onClick={() => updateMut.mutate(s.id)}
+                    >
+                      儲存
+                    </button>
+                    <button className="read-btn" type="button" onClick={() => setEditingId(null)}>
+                      取消
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <div className="seat">{s.seat}</div>
+                    <div className="nm">{s.name}</div>
+                  </>
+                )}
                 {gCount > 0 ? (
                   <span className="st ok">已綁定 {gCount} 位</span>
                 ) : (
                   <span className="st">未綁定</span>
                 )}
-                {inv ? (
-                  <button className="read-btn" type="button" onClick={() => setSheetStudent(s)}>
-                    顯示邀請
-                  </button>
-                ) : (
-                  <button
-                    className="read-btn"
-                    type="button"
-                    onClick={() => inviteMut.mutate(s.id)}
-                    disabled={inviteMut.isPending}
-                  >
-                    產生邀請
-                  </button>
+                {!editing &&
+                  (inv ? (
+                    <button className="read-btn" type="button" onClick={() => setSheetStudent(s)}>
+                      顯示邀請
+                    </button>
+                  ) : (
+                    <button
+                      className="read-btn"
+                      type="button"
+                      onClick={() => inviteMut.mutate(s.id)}
+                      disabled={inviteMut.isPending}
+                    >
+                      產生邀請
+                    </button>
+                  ))}
+                {!editing && (
+                  <>
+                    <button
+                      className="read-btn"
+                      type="button"
+                      onClick={() => {
+                        setEditingId(s.id);
+                        setEditSeat(s.seat);
+                        setEditName(s.name);
+                      }}
+                    >
+                      改名
+                    </button>
+                    <button
+                      className="read-btn"
+                      type="button"
+                      disabled={deleteMut.isPending}
+                      onClick={() => {
+                        const ok = window.confirm(
+                          `刪除 ${s.seat} ${s.name}？邀請與綁定會一併移除，且無法復原。`,
+                        );
+                        if (ok) deleteMut.mutate(s.id);
+                      }}
+                    >
+                      刪除
+                    </button>
+                  </>
                 )}
               </div>
             );

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Button, Card, EmptyState, GhostButton, useToast } from '@/ui';
 import { useAddEvent, useDeleteEvent, useEvents } from '@/hooks/useCalendar';
-import type { EventType } from '@/types/domain';
+import type { EventRemind, EventType } from '@/types/domain';
 
 const TYPE_LABEL: Record<EventType, string> = {
   exam: '評量',
@@ -27,6 +27,8 @@ export function CalendarPanel({
   const add = useAddEvent(classId);
   const del = useDeleteEvent(classId);
   const [title, setTitle] = useState('');
+  const [note, setNote] = useState('');
+  const [remind, setRemind] = useState<EventRemind>('morning');
   const [eventDate, setEventDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [type, setType] = useState<EventType>('activity');
 
@@ -38,10 +40,11 @@ export function CalendarPanel({
       return;
     }
     add.mutate(
-      { title: title.trim(), eventDate, type },
+      { title: title.trim(), eventDate, type, note: note.trim(), remind },
       {
         onSuccess: () => {
           setTitle('');
+          setNote('');
           toast('已新增活動');
         },
         onError: (e) => toast(e instanceof Error ? e.message : '新增失敗'),
@@ -79,6 +82,26 @@ export function CalendarPanel({
             <option value="holiday">放假</option>
           </select>
         </div>
+        <textarea
+          className="ta"
+          style={{ minHeight: 72, marginTop: 8 }}
+          placeholder="要帶的東西或備註，例如：水彩、圍兜、水壺"
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+        />
+        <label className="roster-count-row" style={{ marginTop: 8 }}>
+          手機提醒
+          <select
+            className="in"
+            style={{ flex: 1, marginTop: 0 }}
+            value={remind}
+            onChange={(e) => setRemind(e.target.value as EventRemind)}
+          >
+            <option value="morning">當天早上 7:00</option>
+            <option value="eve">前一晚 7:00</option>
+            <option value="none">不提醒</option>
+          </select>
+        </label>
         <Button tone="amber" onClick={onAdd} disabled={add.isPending} style={{ marginTop: 10 }}>
           {add.isPending ? '新增中…' : '加入行事曆'}
         </Button>
@@ -99,7 +122,11 @@ export function CalendarPanel({
                 </div>
                 <div className="cal-body">
                   <div className="t">{ev.title}</div>
-                  <div className="tl-date">{ev.eventDate}</div>
+                  <div className="tl-date">
+                    {ev.eventDate}
+                    {ev.remind === 'morning' ? ' · 早 7:00 提醒' : ev.remind === 'eve' ? ' · 前一晚提醒' : ''}
+                  </div>
+                  {ev.note ? <div className="tl-date">{ev.note}</div> : null}
                 </div>
                 <span className={`cal-type ${ev.type}`}>{TYPE_LABEL[ev.type]}</span>
                 <button
