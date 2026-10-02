@@ -1,7 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button, Card, EmptyState, GhostButton, useToast } from '@/ui';
 import { useAddEvent, useDeleteEvent, useEvents } from '@/hooks/useCalendar';
-import type { EventRemind, EventType } from '@/types/domain';
+import { queryKeys } from '@/lib/queryKeys';
+import { getClass, updateClassReminder } from '@/services/classes';
+import type { EventType } from '@/types/domain';
 
 const TYPE_LABEL: Record<EventType, string> = {
   exam: '評量',
@@ -23,14 +26,38 @@ export function CalendarPanel({
   onBack: () => void;
 }) {
   const { toast } = useToast();
+  const qc = useQueryClient();
   const { data, isLoading } = useEvents(classId);
+  const { data: cls } = useQuery({
+    queryKey: queryKeys.classes.one(classId ?? ''),
+    queryFn: () => getClass(classId as string),
+    enabled: Boolean(classId),
+  });
   const add = useAddEvent(classId);
   const del = useDeleteEvent(classId);
   const [title, setTitle] = useState('');
   const [note, setNote] = useState('');
-  const [remind, setRemind] = useState<EventRemind>('morning');
   const [eventDate, setEventDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [type, setType] = useState<EventType>('activity');
+  const [remindDay, setRemindDay] = useState<'same' | 'prev' | 'none'>('same');
+  const [remindTime, setRemindTime] = useState('07:00');
+
+  useEffect(() => {
+    if (!cls) return;
+    setRemindDay(cls.remindDay);
+    setRemindTime(cls.remindTime);
+  }, [cls]);
+
+  const saveRemind = useMutation({
+    mutationFn: () =>
+      updateClassReminder(classId as string, { remindDay, remindTime }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: queryKeys.classes.one(classId ?? '') });
+      void qc.invalidateQueries({ queryKey: queryKeys.classes.mine() });
+      toast('已儲存全班預設提醒');
+    },
+    onError: (e) => toast(e instanceof Error ? e.message : '儲存失敗'),
+  });
 
   if (!classId) return <EmptyState>請先建立班級</EmptyState>;
 
@@ -40,7 +67,7 @@ export function CalendarPanel({
       return;
     }
     add.mutate(
-      { title: title.trim(), eventDate, type, note: note.trim(), remind },
+      { title: title.trim(), eventDate, type, note: note.trim(), remind: 'morning' },
       {
         onSuccess: () => {
           setTitle('');
@@ -55,6 +82,34 @@ export function CalendarPanel({
   return (
     <>
       <GhostButton onClick={onBack}>← 返回總覽</GhostButton>
+      <Card label="⏰ 全班預設提醒">
+        <div className="roster-hint">
+          只需設定一次。家長訂閱後會用這個時間提醒；個別家長仍可改成自己出門的時間。
+        </div>
+        <div className="roster-one-row">
+          <select
+            className="in"
+            style={{ flex: 1, marginTop: 0 }}
+            value={remindDay}
+            onChange={(e) => setRemindDay(e.target.value as 'same' | 'prev' | 'none')}
+          >
+            <option value="same">活動當天</option>
+            <option value="prev">前一天</option>
+            <option value="none">不提醒</option>
+          </select>
+          <input
+            className="in"
+            type="time"
+            style={{ flex: '0 0 120px', marginTop: 0 }}
+            value={remindTime}
+            disabled={remindDay === 'none'}
+            onChange={(e) => setRemindTime(e.target.value)}
+          />
+        </div>
+        <GhostButton style={{ marginTop: 8 }} disabled={saveRemind.isPending} onClick={() => saveRemind.mutate()}>
+          {saveRemind.isPending ? '儲存中…' : '儲存預設'}
+        </GhostButton>
+      </Card>
       <Card label="➕ 新增活動">
         <input
           className="in"
@@ -89,19 +144,6 @@ export function CalendarPanel({
           value={note}
           onChange={(e) => setNote(e.target.value)}
         />
-        <label className="roster-count-row" style={{ marginTop: 8 }}>
-          手機提醒
-          <select
-            className="in"
-            style={{ flex: 1, marginTop: 0 }}
-            value={remind}
-            onChange={(e) => setRemind(e.target.value as EventRemind)}
-          >
-            <option value="morning">當天早上 7:00</option>
-            <option value="eve">前一晚 7:00</option>
-            <option value="none">不提醒</option>
-          </select>
-        </label>
         <Button tone="amber" onClick={onAdd} disabled={add.isPending} style={{ marginTop: 10 }}>
           {add.isPending ? '新增中…' : '加入行事曆'}
         </Button>
@@ -122,10 +164,7 @@ export function CalendarPanel({
                 </div>
                 <div className="cal-body">
                   <div className="t">{ev.title}</div>
-                  <div className="tl-date">
-                    {ev.eventDate}
-                    {ev.remind === 'morning' ? ' · 早 7:00 提醒' : ev.remind === 'eve' ? ' · 前一晚提醒' : ''}
-                  </div>
+                  <div className="tl-date">{ev.eventDate}</div>
                   {ev.note ? <div className="tl-date">{ev.note}</div> : null}
                 </div>
                 <span className={`cal-type ${ev.type}`}>{TYPE_LABEL[ev.type]}</span>

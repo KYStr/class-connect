@@ -39,6 +39,9 @@ export interface Class {
   id: string;
   name: string;
   officeHours: string;
+  /** same = event day, prev = day before, none = no alarm */
+  remindDay: 'same' | 'prev' | 'none';
+  remindTime: string;
 }
 
 export interface Student {

@@ -170,6 +170,8 @@ export type Database = {
           id: string
           name: string
           office_hours: string | null
+          remind_day: string
+          remind_time: string
           teacher_id: string
         }
         Insert: {
@@ -177,6 +179,8 @@ export type Database = {
           id?: string
           name: string
           office_hours?: string | null
+          remind_day?: string
+          remind_time?: string
           teacher_id: string
         }
         Update: {
@@ -184,6 +188,8 @@ export type Database = {
           id?: string
           name?: string
           office_hours?: string | null
+          remind_day?: string
+          remind_time?: string
           teacher_id?: string
         }
         Relationships: [
@@ -195,6 +201,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      calendar_subs: {
+        Row: {
+          class_id: string
+          created_at: string
+          id: string
+          profile_id: string
+          remind_day: string
+          remind_time: string
+          token: string
+        }
+        Insert: {
+          class_id: string
+          created_at?: string
+          id?: string
+          profile_id: string
+          remind_day?: string
+          remind_time?: string
+          token: string
+        }
+        Update: {
+          class_id?: string
+          created_at?: string
+          id?: string
+          profile_id?: string
+          remind_day?: string
+          remind_time?: string
+          token?: string
+        }
+        Relationships: []
       }
       consent_forms: {
         Row: {

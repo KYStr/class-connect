@@ -17,4 +17,6 @@ export const supabase = createClient<Database>(url ?? 'http://localhost:54321', 
   auth: { persistSession: true, autoRefreshToken: true },
 });
 
+export const supabaseUrl = url ?? 'http://localhost:54321';
+
 export const hasSupabaseEnv = Boolean(url && anonKey);

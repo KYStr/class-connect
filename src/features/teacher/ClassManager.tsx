@@ -277,9 +277,9 @@ function RosterManager({ classId, className }: { classId: string; className: str
             const gCount = guardianCounts?.get(s.id) ?? 0;
             const editing = editingId === s.id;
             return (
-              <div key={s.id} className="rl" style={{ flexWrap: 'wrap' }}>
+              <div key={s.id} className="rl roster-person">
                 {editing ? (
-                  <>
+                  <div className="roster-person-edit">
                     <input
                       className="in roster-one-seat"
                       value={editSeat}
@@ -303,59 +303,58 @@ function RosterManager({ classId, className }: { classId: string; className: str
                     <button className="read-btn" type="button" onClick={() => setEditingId(null)}>
                       取消
                     </button>
-                  </>
+                  </div>
                 ) : (
                   <>
-                    <div className="seat">{s.seat}</div>
-                    <div className="nm">{s.name}</div>
-                  </>
-                )}
-                {gCount > 0 ? (
-                  <span className="st ok">已綁定 {gCount} 位</span>
-                ) : (
-                  <span className="st">未綁定</span>
-                )}
-                {!editing &&
-                  (inv ? (
-                    <button className="read-btn" type="button" onClick={() => setSheetStudent(s)}>
-                      顯示邀請
-                    </button>
-                  ) : (
-                    <button
-                      className="read-btn"
-                      type="button"
-                      onClick={() => inviteMut.mutate(s.id)}
-                      disabled={inviteMut.isPending}
-                    >
-                      產生邀請
-                    </button>
-                  ))}
-                {!editing && (
-                  <>
-                    <button
-                      className="read-btn"
-                      type="button"
-                      onClick={() => {
-                        setEditingId(s.id);
-                        setEditSeat(s.seat);
-                        setEditName(s.name);
-                      }}
-                    >
-                      改名
-                    </button>
-                    <button
-                      className="read-btn"
-                      type="button"
-                      disabled={deleteMut.isPending}
-                      onClick={() => {
-                        const ok = window.confirm(
-                          `刪除 ${s.seat} ${s.name}？邀請與綁定會一併移除，且無法復原。`,
-                        );
-                        if (ok) deleteMut.mutate(s.id);
-                      }}
-                    >
-                      刪除
-                    </button>
+                    <div className="roster-person-main">
+                      <div className="seat">{s.seat}</div>
+                      <div className="nm">{s.name}</div>
+                      {gCount > 0 ? (
+                        <span className="st ok">已綁定 {gCount}</span>
+                      ) : (
+                        <span className="st">未綁定</span>
+                      )}
+                    </div>
+                    <div className="roster-person-actions">
+                      {inv ? (
+                        <button className="read-btn" type="button" onClick={() => setSheetStudent(s)}>
+                          邀請
+                        </button>
+                      ) : (
+                        <button
+                          className="read-btn"
+                          type="button"
+                          onClick={() => inviteMut.mutate(s.id)}
+                          disabled={inviteMut.isPending}
+                        >
+                          邀請
+                        </button>
+                      )}
+                      <button
+                        className="read-btn"
+                        type="button"
+                        onClick={() => {
+                          setEditingId(s.id);
+                          setEditSeat(s.seat);
+                          setEditName(s.name);
+                        }}
+                      >
+                        改名
+                      </button>
+                      <button
+                        className="read-btn"
+                        type="button"
+                        disabled={deleteMut.isPending}
+                        onClick={() => {
+                          const ok = window.confirm(
+                            `刪除 ${s.seat} ${s.name}？邀請與綁定會一併移除，且無法復原。`,
+                          );
+                          if (ok) deleteMut.mutate(s.id);
+                        }}
+                      >
+                        刪除
+                      </button>
+                    </div>
                   </>
                 )}
               </div>

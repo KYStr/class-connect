@@ -19,7 +19,7 @@
     "storybook": "echo \"[storybook] not wired yet (P0/P1)\" && exit 0",
     "gen:types": "supabase gen types typescript --local > src/types/db.ts",
     "deploy:db": "npx supabase db push",
-    "deploy:functions": "npx supabase functions deploy redeem_invite && npx supabase functions deploy send_push && npx supabase functions deploy parse_roster",
+    "deploy:functions": "npx supabase functions deploy redeem_invite && npx supabase functions deploy send_push && npx supabase functions deploy parse_roster && npx supabase functions deploy calendar_feed --no-verify-jwt",
     "deploy:web": "npm run build && npx wrangler deploy"
   },
   "dependencies": {

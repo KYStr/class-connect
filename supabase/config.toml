@@ -46,6 +46,9 @@ enabled = true
 [edge_runtime]
 enabled = true
 
+[functions.calendar_feed]
+verify_jwt = false
+
 # Analytics (logflare) requires Docker exposed on tcp://localhost:2375 on Windows and otherwise
 # fails its health check, rolling back `supabase start`. Disabled for local dev.
 [analytics]

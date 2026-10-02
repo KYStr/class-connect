@@ -31,17 +31,34 @@ function taipeiStamp(date: string, hour: number, minute = 0): string {
   return new Date(iso).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
 }
 
-function alarmStamp(eventDate: string, remind: EventRemind): string | null {
-  if (remind === 'eve') return taipeiStamp(shiftDate(eventDate, -1), 19);
-  if (remind === 'morning') return taipeiStamp(eventDate, 7);
-  return null;
-}
-
 function dateStamp(iso: string): string {
   return iso.replace(/-/g, '');
 }
 
-export function eventsToIcs(events: CalendarEvent[], calendarName: string): string {
+function alarmFromPlan(eventDate: string, day: 'same' | 'prev' | 'none', time: string): string | null {
+  if (day === 'none') return null;
+  const [hs, ms] = time.split(':');
+  const hour = Number(hs);
+  const minute = Number(ms);
+  const date = day === 'prev' ? shiftDate(eventDate, -1) : eventDate;
+  return taipeiStamp(
+    date,
+    Number.isFinite(hour) ? hour : 7,
+    Number.isFinite(minute) ? minute : 0,
+  );
+}
+
+function legacyPlan(remind: EventRemind): { day: 'same' | 'prev' | 'none'; time: string } {
+  if (remind === 'eve') return { day: 'prev', time: '19:00' };
+  if (remind === 'none') return { day: 'none', time: '07:00' };
+  return { day: 'same', time: '07:00' };
+}
+
+export function eventsToIcs(
+  events: CalendarEvent[],
+  calendarName: string,
+  plan?: { day: 'same' | 'prev' | 'none'; time: string },
+): string {
   const lines = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
@@ -55,10 +72,12 @@ export function eventsToIcs(events: CalendarEvent[], calendarName: string): stri
   for (const ev of events) {
     const note = ev.note?.trim();
     const summary = `${TYPE_LABEL[ev.type]}｜${ev.title}`;
+    const chosen = plan ?? legacyPlan(ev.remind);
     const description = [
       note ? `要帶／備註：${note}` : '',
-      ev.remind === 'morning' ? '提醒：當天早上 7:00' : '',
-      ev.remind === 'eve' ? '提醒：前一晚 7:00' : '',
+      chosen.day === 'none'
+        ? ''
+        : `提醒：${chosen.day === 'prev' ? '前一天' : '當天'} ${chosen.time}`,
     ]
       .filter(Boolean)
       .join('\n');
@@ -73,7 +92,7 @@ export function eventsToIcs(events: CalendarEvent[], calendarName: string): stri
       `SUMMARY:${esc(summary)}`,
     );
     if (description) lines.push(`DESCRIPTION:${esc(description)}`);
-    const alarm = alarmStamp(ev.eventDate, ev.remind);
+    const alarm = alarmFromPlan(ev.eventDate, chosen.day, chosen.time);
     if (alarm) {
       lines.push(
         'BEGIN:VALARM',

@@ -2726,6 +2726,38 @@ select.in {
   flex: 1;
   margin-top: 0 !important;
 }
+.roster-person {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+.roster-person-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.roster-person-main .nm {
+  min-width: 0;
+}
+.roster-person-main .st {
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+.roster-person-actions,
+.roster-person-edit {
+  display: flex;
+  gap: 6px;
+}
+.roster-person-actions .read-btn,
+.roster-person-edit .read-btn {
+  flex: 1;
+  padding: 6px 8px;
+  font-size: 12px;
+}
+.roster-person-edit .roster-one-name {
+  min-width: 0;
+}
 .roster-smart-actions {
   display: flex;
   flex-wrap: wrap;
