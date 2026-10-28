@@ -14,6 +14,7 @@ export function useAnnouncements(classId: string | undefined) {
     queryKey: queryKeys.announcements.list(classId ?? ''),
     queryFn: () => listAnnouncements(classId as string),
     enabled: Boolean(classId),
+    refetchInterval: 60_000,
   });
 }
 
@@ -29,7 +30,7 @@ export function useAnnouncementsWithStats(classId: string | undefined) {
 export function useCreateAnnouncement(classId: string | undefined) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: { title: string; body: string; important: boolean }) =>
+    mutationFn: (input: { title: string; body: string; important: boolean; scheduledAt?: string }) =>
       createAnnouncement({ classId: classId as string, ...input }),
     onSuccess: () => {
       if (!classId) return;

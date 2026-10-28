@@ -12,6 +12,7 @@ import {
   updateStudent,
 } from '@/services/students';
 import { parseRosterText, type ParsedRosterRow } from '@/services/rosterParse';
+import { rosterFileToText } from '@/lib/rosterFile';
 import { activeInviteByStudent, createInvite, listInvites } from '@/services/invites';
 import type { Student } from '@/types/domain';
 import { InviteQrSheet } from './InviteQrSheet';
@@ -20,16 +21,33 @@ import { InvitePrintPreview, type PrintInviteRow } from './InvitePrintSheet';
 const DEFAULT_SEAT_COUNT = 30;
 
 // Teacher setup (SPEC 7.1 / DEVELOPMENT.md §7.1): create class → add students → invite parents.
-export function ClassManager() {
+export function ClassManager({
+  classId,
+  onCreated,
+}: {
+  classId?: string;
+  onCreated?: (id: string) => void;
+}) {
   const { data: classes, isLoading } = useMyClasses();
-  const cls = classes?.[0];
+  const cls = classes?.find((c) => c.id === classId) ?? classes?.[0];
 
   if (isLoading) return <EmptyState>載入中…</EmptyState>;
-  if (!cls) return <CreateClassForm />;
-  return <RosterManager classId={cls.id} className={cls.name} />;
+  if (!cls) return <CreateClassForm onCreated={onCreated} />;
+  return (
+    <>
+      <RosterManager classId={cls.id} className={cls.name} />
+      <CreateClassForm onCreated={onCreated} compact />
+    </>
+  );
 }
 
-function CreateClassForm() {
+function CreateClassForm({
+  onCreated,
+  compact = false,
+}: {
+  onCreated?: (id: string) => void;
+  compact?: boolean;
+}) {
   const qc = useQueryClient();
   const { toast } = useToast();
   const [name, setName] = useState('');
@@ -43,19 +61,21 @@ function CreateClassForm() {
       });
       void qc.invalidateQueries({ queryKey: queryKeys.classes.mine() });
       void qc.invalidateQueries({ queryKey: queryKeys.features.forClass(created.id) });
-      toast('班級已建立');
+      onCreated?.(created.id);
+      setName('');
+      toast(compact ? '已建立另一個班級' : '班級已建立');
     },
   });
   return (
-    <Card label="🏫 建立你的班級">
+    <Card label={compact ? '＋ 建立另一個班級' : '🏫 建立你的班級'}>
       <input
         className="in"
         value={name}
         onChange={(e) => setName(e.target.value)}
-        placeholder="班級名稱，例如：一年甲班"
+        placeholder="班級名稱，例如：二年乙班"
       />
       <Button tone="amber" style={{ marginTop: 10 }} onClick={() => mut.mutate()} disabled={mut.isPending}>
-        {mut.isPending ? '建立中…' : '建立班級'}
+        {mut.isPending ? '建立中…' : compact ? '建立並切換' : '建立班級'}
       </Button>
     </Card>
   );
@@ -451,7 +471,7 @@ function RosterManager({ classId, className }: { classId: string; className: str
 
       <Card label="✨ 智慧貼上名單">
         <div className="roster-hint">
-          從 Excel／行政系統複製貼上即可（格式亂一點也行）。也可選 .txt／.csv 檔。辨識後請先確認再加入。
+          從 Excel、CSV 或行政系統複製貼上即可。也可直接選 .xlsx／.csv。辨識後請先確認再加入。
         </div>
         <textarea
           className="ta"
@@ -465,17 +485,19 @@ function RosterManager({ classId, className }: { classId: string; className: str
             選擇檔案
             <input
               type="file"
-              accept=".txt,.csv,.tsv,text/plain,text/csv"
+              accept=".txt,.csv,.tsv,.xls,.xlsx,text/plain,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
               hidden
               onChange={(e) => {
                 const file = e.target.files?.[0];
                 e.target.value = '';
                 if (!file) return;
-                void file.text().then((text) => {
-                  setPasteText(text);
-                  setDraftRows(null);
-                  toast(`已載入 ${file.name}`);
-                });
+                void rosterFileToText(file)
+                  .then((text) => {
+                    setPasteText(text);
+                    setDraftRows(null);
+                    toast(text.trim() ? `已載入 ${file.name}` : `${file.name} 是空的`);
+                  })
+                  .catch(() => toast('無法讀取這個檔案'));
               }}
             />
           </label>

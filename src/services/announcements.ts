@@ -83,6 +83,9 @@ export async function createAnnouncement(input: {
   const { data: userData } = await supabase.auth.getUser();
   const authorId = userData.user?.id;
   if (!authorId) throw new Error('Not authenticated');
+  const when = input.scheduledAt ? new Date(input.scheduledAt) : new Date();
+  const publishAt = Number.isNaN(when.getTime()) ? new Date() : when;
+  const isFuture = publishAt.getTime() > Date.now() + 15_000;
   const { data, error } = await supabase
     .from('announcements')
     .insert({
@@ -91,24 +94,25 @@ export async function createAnnouncement(input: {
       title: input.title,
       body: input.body || null,
       important: input.important,
-      scheduled_at: input.scheduledAt ?? null,
-      published_at: input.scheduledAt ?? new Date().toISOString(),
+      scheduled_at: isFuture ? publishAt.toISOString() : null,
+      published_at: publishAt.toISOString(),
     })
     .select('id, class_id, title, body, important, published_at, scheduled_at')
     .single();
   if (error) throw error;
   const ann = toAnnouncement(data as AnnRow);
-  // Fire-and-forget push (important announcements prioritized in copy).
-  void listClassGuardianIds(input.classId)
-    .then((profileIds) =>
-      notifyProfiles({
-        profileIds,
-        title: input.important ? '📣 重要公告' : '📣 新公告',
-        body: input.title,
-        url: '/p',
-      }),
-    )
-    .catch(() => undefined);
+  if (!isFuture) {
+    void listClassGuardianIds(input.classId)
+      .then((profileIds) =>
+        notifyProfiles({
+          profileIds,
+          title: input.important ? '📣 重要公告' : '📣 新公告',
+          body: input.title,
+          url: '/p',
+        }),
+      )
+      .catch(() => undefined);
+  }
   return ann;
 }
 

@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import type { SlideDir } from './PhoneShell';
 
 interface AppBarProps {
@@ -10,6 +11,8 @@ interface AppBarProps {
   onLogout?: () => void;
   /** Title slides in with tab change (no slide-out). */
   titleSlideDir?: SlideDir;
+  /** Optional class switcher rendered in place of the plain class label. */
+  classControl?: ReactNode;
 }
 
 // Colored title bar (DEVELOPMENT.md §10.2). The floating panel overlaps it via negative margin.
@@ -20,6 +23,7 @@ export function AppBar({
   onBack,
   onLogout,
   titleSlideDir = null,
+  classControl,
 }: AppBarProps) {
   const titleClass =
     titleSlideDir === 'right'
@@ -39,7 +43,7 @@ export function AppBar({
           登出
         </button>
       ) : null}
-      <div className="cls">{classLabel}</div>
+      {classControl ?? <div className="cls">{classLabel}</div>}
       <div key={title} className={titleClass}>
         {title}
       </div>

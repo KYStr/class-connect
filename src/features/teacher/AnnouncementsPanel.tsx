@@ -22,6 +22,7 @@ export function AnnouncementsPanel({
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [important, setImportant] = useState(false);
+  const [schedule, setSchedule] = useState('');
   const [showTracking, setShowTracking] = useState(openTracking);
 
   useEffect(() => {
@@ -35,14 +36,17 @@ export function AnnouncementsPanel({
       toast('請輸入標題');
       return;
     }
+    const scheduledAt = schedule ? new Date(schedule).toISOString() : undefined;
+    const isFuture = Boolean(scheduledAt && new Date(scheduledAt).getTime() > Date.now() + 15_000);
     create.mutate(
-      { title: title.trim(), body: body.trim(), important },
+      { title: title.trim(), body: body.trim(), important, scheduledAt },
       {
         onSuccess: () => {
           setTitle('');
           setBody('');
           setImportant(false);
-          toast('公告已發布');
+          setSchedule('');
+          toast(isFuture ? '已排程，時間到才會出現在家長端' : '公告已發布');
         },
         onError: (e) => toast(e instanceof Error ? e.message : '發布失敗'),
       },
@@ -90,8 +94,19 @@ export function AnnouncementsPanel({
             <span className="sw2-tr" />
           </label>
         </label>
+        <label className="roster-count-row" style={{ marginTop: 8 }}>
+          排程發布
+          <input
+            className="in"
+            type="datetime-local"
+            style={{ flex: 1, marginTop: 0 }}
+            value={schedule}
+            onChange={(e) => setSchedule(e.target.value)}
+          />
+        </label>
+        <div className="roster-hint">留空就立刻發布。填了未來時間，家長在那之前看不到，也不會先收到通知。</div>
         <Button tone="amber" style={{ marginTop: 10 }} onClick={publish} disabled={create.isPending}>
-          {create.isPending ? '發布中…' : '發布公告'}
+          {create.isPending ? '處理中…' : schedule ? '排程公告' : '發布公告'}
         </Button>
       </Card>
 
@@ -125,14 +140,21 @@ export function AnnouncementsPanel({
                 </div>
               )}
               <div style={{ fontSize: 11.5, color: 'var(--muted)', marginTop: 6 }}>
-                家長已讀 {a.readCount ?? 0}/{a.guardianCount ?? 0}
-                {a.guardianCount === 0 ? '（尚無家長加入）' : ''} ·{' '}
-                {new Date(a.publishedAt).toLocaleString('zh-TW', {
-                  month: 'numeric',
-                  day: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })}
+                {new Date(a.publishedAt).getTime() > Date.now()
+                  ? `排程中，${new Date(a.publishedAt).toLocaleString('zh-TW', {
+                      month: 'numeric',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })} 才對家長公開`
+                  : `家長已讀 ${a.readCount ?? 0}/${a.guardianCount ?? 0}${
+                      a.guardianCount === 0 ? '（尚無家長加入）' : ''
+                    } · ${new Date(a.publishedAt).toLocaleString('zh-TW', {
+                      month: 'numeric',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}`}
               </div>
             </div>
           ))

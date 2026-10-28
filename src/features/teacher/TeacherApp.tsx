@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   AppBar,
@@ -71,7 +71,21 @@ export function TeacherApp() {
   const [slideDir, setSlideDir] = useState<SlideDir>(null);
   const tabOrderRef = useRef<string[]>([]);
   const { data: classes } = useMyClasses();
-  const cls = classes?.[0];
+  const [activeClassId, setActiveClassId] = useState(
+    () => localStorage.getItem('cc_active_class') ?? '',
+  );
+  useEffect(() => {
+    if (!classes?.length) return;
+    if (classes.some((c) => c.id === activeClassId)) return;
+    const next = classes[0].id;
+    setActiveClassId(next);
+    localStorage.setItem('cc_active_class', next);
+  }, [classes, activeClassId]);
+  const cls = classes?.find((c) => c.id === activeClassId) ?? classes?.[0];
+  const chooseClass = (id: string) => {
+    setActiveClassId(id);
+    localStorage.setItem('cc_active_class', id);
+  };
   const { data: roster } = useRoster(cls?.id);
   const { data: boundCount } = useBoundStudentCount(cls?.id);
   const { data: features } = useFeatures(cls?.id);
@@ -97,10 +111,12 @@ export function TeacherApp() {
   const total = completion?.total ?? 0;
   const pct = total === 0 ? 0 : Math.round((done / total) * 100);
   const hwLeft = Math.max(0, total - done);
-  const annCount = anns?.length ?? 0;
+  const liveAnns = (anns ?? []).filter((a) => new Date(a.publishedAt).getTime() <= Date.now());
+  const annCount = liveAnns.length;
   const bringCount = bring?.length ?? 0;
-  const annsNeedingRead =
-    anns?.filter((a) => (a.readCount ?? 0) < (a.guardianCount ?? 0)).length ?? 0;
+  const annsNeedingRead = liveAnns.filter(
+    (a) => (a.readCount ?? 0) < (a.guardianCount ?? 0),
+  ).length;
   const pendingLeaveCount = pendingLeaves?.length ?? 0;
   const unsignedCount = consentStatus?.unsigned.length ?? 0;
   const latestConsent = consentForms?.[0];
@@ -303,6 +319,22 @@ export function TeacherApp() {
             <AppBar
               variant="t"
               classLabel={`👩‍🏫 導師後台 · ${cls?.name ?? '尚未建立班級'}`}
+              classControl={
+                (classes?.length ?? 0) > 1 ? (
+                  <select
+                    className="cls-switch"
+                    aria-label="選擇班級"
+                    value={cls?.id ?? ''}
+                    onChange={(e) => chooseClass(e.target.value)}
+                  >
+                    {classes?.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                ) : undefined
+              }
               title={heads[safeTab] ?? '總覽'}
               onLogout={signOut}
               titleSlideDir={tabSlideOn ? slideDir : null}
@@ -388,7 +420,10 @@ export function TeacherApp() {
             )}
             {showOverviewRoster && (
               <div data-tour="roster">
-                <ClassManager />
+                <ClassManager
+                  classId={cls?.id}
+                  onCreated={(id) => chooseClass(id)}
+                />
               </div>
             )}
             <div className="card" data-tour="todos">
