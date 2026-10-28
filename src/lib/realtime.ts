@@ -14,6 +14,7 @@ const CLASS_TABLES = [
   'consent_forms',
   'performance_notes',
   'milestones',
+  'photos',
   'class_features',
 ] as const;
 

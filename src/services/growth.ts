@@ -1,5 +1,7 @@
 import { supabase } from '@/lib/supabase';
-import type { GrowthItem, Photo } from '@/types/domain';
+import { compressImage } from '@/lib/imageCompress';
+import { getSignedPhotoUrls, removePhotoObject, uploadClassPhoto } from '@/services/storage';
+import type { GrowthItem, Photo, PhotoVisibility } from '@/types/domain';
 
 // DEVELOPMENT.md §8.2 / §8.3. Timeline merges notes + milestones + published grade milestones (SPEC L9).
 
@@ -70,8 +72,8 @@ export async function getMemoryBookStats(
   const [{ count: photos }, { count: notes }, { count: milestones }, { data: latest }] =
     await Promise.all([
       supabase
-        .from('photos')
-        .select('id', { count: 'exact', head: true })
+        .from('photo_students')
+        .select('photo_id', { count: 'exact', head: true })
         .eq('student_id', studentId),
       supabase
         .from('performance_notes')
@@ -106,26 +108,104 @@ export async function getMemoryBookStats(
   };
 }
 
-export async function listPhotos(studentId: string): Promise<Photo[]> {
-  const { data, error } = await supabase
-    .from('photos')
-    .select('id, student_id, caption, storage_path, visibility')
-    .eq('student_id', studentId)
-    .order('created_at', { ascending: false });
-  if (error) throw error;
-  return ((data ?? []) as {
+type PhotoJoin = {
+  student_id: string;
+  photos: {
     id: string;
     student_id: string | null;
     caption: string | null;
     storage_path: string;
-    visibility: Photo['visibility'];
-  }[]).map((p) => ({
-    id: p.id,
-    studentId: p.student_id,
-    caption: p.caption,
-    storagePath: p.storage_path,
-    visibility: p.visibility,
-  }));
+    visibility: PhotoVisibility;
+    created_at: string;
+  } | null;
+};
+
+function taipeiTodayStartIso(): string {
+  const day = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Taipei',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
+  return new Date(`${day}T00:00:00+08:00`).toISOString();
+}
+
+async function photosFromTags(rows: PhotoJoin[]): Promise<Photo[]> {
+  const tagged = rows.filter((row) => row.photos);
+  const urls = await getSignedPhotoUrls(tagged.map((row) => row.photos!.storage_path));
+  return tagged.map((row) => {
+    const photo = row.photos!;
+    return {
+      id: photo.id,
+      studentId: row.student_id,
+      studentIds: [row.student_id],
+      caption: photo.caption,
+      storagePath: photo.storage_path,
+      visibility: photo.visibility,
+      url: urls[photo.storage_path] ?? null,
+      createdAt: photo.created_at,
+    };
+  });
+}
+
+export async function listPhotos(studentId: string): Promise<Photo[]> {
+  const { data, error } = await supabase
+    .from('photo_students')
+    .select('student_id, photos!inner(id, student_id, caption, storage_path, visibility, created_at)')
+    .eq('student_id', studentId);
+  if (error) throw error;
+  const photos = await photosFromTags((data ?? []) as unknown as PhotoJoin[]);
+  return photos.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+}
+
+export async function listTodayPhotos(studentId: string): Promise<Photo[]> {
+  const { data, error } = await supabase
+    .from('photo_students')
+    .select('student_id, photos!inner(id, student_id, caption, storage_path, visibility, created_at)')
+    .eq('student_id', studentId)
+    .gte('photos.created_at', taipeiTodayStartIso());
+  if (error) throw error;
+  const photos = await photosFromTags((data ?? []) as unknown as PhotoJoin[]);
+  return photos.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+}
+
+export async function createPhoto(input: {
+  classId: string;
+  studentIds: string[];
+  caption: string;
+  file: File;
+}): Promise<void> {
+  const studentIds = [...new Set(input.studentIds)];
+  if (studentIds.length === 0) throw new Error('請至少標記一位學生');
+  const photoId = crypto.randomUUID();
+  const blob = await compressImage(input.file);
+  const { path } = await uploadClassPhoto(input.classId, photoId, blob);
+  const { error } = await supabase.from('photos').insert({
+    id: photoId,
+    class_id: input.classId,
+    student_id: null,
+    caption: input.caption.trim() || null,
+    storage_path: path,
+    visibility: 'guardians',
+  });
+  if (error) {
+    await removePhotoObject(path).catch(() => undefined);
+    throw error;
+  }
+  const { error: tagErr } = await supabase
+    .from('photo_students')
+    .insert(studentIds.map((studentId) => ({ photo_id: photoId, student_id: studentId })));
+  if (tagErr) {
+    await supabase.from('photos').delete().eq('id', photoId);
+    await removePhotoObject(path).catch(() => undefined);
+    throw tagErr;
+  }
+}
+
+export async function deletePhoto(photo: { id: string; storagePath: string }): Promise<void> {
+  const { error } = await supabase.from('photos').delete().eq('id', photo.id);
+  if (error) throw error;
+  await removePhotoObject(photo.storagePath).catch(() => undefined);
 }
 
 export async function addPerformanceNote(input: {

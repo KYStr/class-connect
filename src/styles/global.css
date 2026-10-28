@@ -2821,6 +2821,75 @@ select.in {
   padding: 4px 8px !important;
   font-size: 12px !important;
 }
+
+.photo-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+.photo-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  min-width: 0;
+}
+.photo-cell img,
+.photo-ph {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 8px;
+  background: var(--soft, #eef2f4);
+}
+.photo-cell span,
+.photo-cell figcaption {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.photo-viewer {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.photo-viewer-mask {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(33, 42, 51, 0.72);
+}
+.photo-viewer-frame {
+  position: relative;
+  z-index: 1;
+  width: min(420px, calc(100% - 28px));
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+}
+.photo-viewer-frame img {
+  max-width: 100%;
+  max-height: 70vh;
+  border-radius: 12px;
+  background: #fff;
+}
+.photo-viewer-frame p {
+  margin: 0;
+  color: #fff;
+  font-size: 14px;
+  text-align: center;
+}
 .invite-sheet-layer {
   position: fixed;
   inset: 0;

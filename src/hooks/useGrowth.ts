@@ -3,10 +3,14 @@ import { queryKeys } from '@/lib/queryKeys';
 import {
   addMilestone,
   addPerformanceNote,
+  createPhoto,
+  deletePhoto,
   getGrowthTimeline,
   getMemoryBookStats,
   listPhotos,
+  listTodayPhotos,
 } from '@/services/growth';
+import type { Photo } from '@/types/domain';
 
 export function useGrowthTimeline(studentId: string | undefined) {
   return useQuery({
@@ -21,6 +25,41 @@ export function useMemoryBook(studentId: string | undefined) {
     queryKey: queryKeys.growth.memoryBook(studentId ?? ''),
     queryFn: () => getMemoryBookStats(studentId as string),
     enabled: Boolean(studentId),
+  });
+}
+
+export function useTodayPhotos(studentId: string | undefined) {
+  return useQuery({
+    queryKey: [...queryKeys.growth.photos(studentId ?? ''), 'today'] as const,
+    queryFn: () => listTodayPhotos(studentId as string),
+    enabled: Boolean(studentId),
+  });
+}
+
+export function useCreatePhoto(classId: string | undefined, studentId: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { studentIds: string[]; caption: string; file: File }) =>
+      createPhoto({ classId: classId as string, ...input }),
+    onSuccess: (_data, input) => {
+      const ids = new Set([studentId, ...input.studentIds].filter(Boolean) as string[]);
+      for (const id of ids) {
+        qc.invalidateQueries({ queryKey: queryKeys.growth.photos(id) });
+        qc.invalidateQueries({ queryKey: queryKeys.growth.memoryBook(id) });
+      }
+    },
+  });
+}
+
+export function useDeletePhoto(studentId: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (photo: Photo) => deletePhoto(photo),
+    onSuccess: () => {
+      if (!studentId) return;
+      qc.invalidateQueries({ queryKey: queryKeys.growth.photos(studentId) });
+      qc.invalidateQueries({ queryKey: queryKeys.growth.memoryBook(studentId) });
+    },
   });
 }
 

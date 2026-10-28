@@ -8,12 +8,13 @@ import { useFeatures } from '@/hooks/useFeatures';
 import { useHomework } from '@/hooks/useContact';
 import { useClassRealtime } from '@/hooks/useClassRealtime';
 import { useMyConsentPending } from '@/hooks/useConsent';
+import { useMemoryBook, useTodayPhotos } from '@/hooks/useGrowth';
 import { hasSeen, useMarkOnboardingSeen, useOnboarding } from '@/hooks/useOnboarding';
 import { PARENT_WELCOME_KEY } from '@/services/onboarding';
 import { t } from '@/i18n';
 import { todayIso } from '@/services/contact';
 import { parentPath, parseParentPath, type ParentSubView } from '@/lib/shellPaths';
-import type { ConsentForm, Student } from '@/types/domain';
+import type { ConsentForm, Photo, Student } from '@/types/domain';
 import { ParentAnnouncements } from './ParentAnnouncements';
 import { ParentContact } from './ParentContact';
 import { ParentGrades } from './ParentGrades';
@@ -22,6 +23,7 @@ import { ParentCalendar } from './ParentCalendar';
 import { ParentLeave } from './ParentLeave';
 import { ParentMessages } from './ParentMessages';
 import { ParentConsent } from './ParentConsent';
+import { PhotoGrid, PhotoViewer } from '@/features/shared/PhotoGallery';
 
 type SubView = ParentSubView;
 
@@ -67,6 +69,9 @@ export function ParentApp({
   const { data: pendingConsent } = useMyConsentPending(
     features?.consent ? child?.id : undefined,
   );
+  const { data: growthBook } = useMemoryBook(features?.growth ? child?.id : undefined);
+  const { data: todayPhotos } = useTodayPhotos(features?.growth ? child?.id : undefined);
+  const [openPhoto, setOpenPhoto] = useState<Photo | null>(null);
   useClassRealtime(preview ? undefined : child?.classId);
   const { data: onboarding, isSuccess: onboardingReady } = useOnboarding();
   const markSeen = useMarkOnboardingSeen();
@@ -81,8 +86,12 @@ export function ParentApp({
   const total = hw?.length ?? 0;
   const pct = total === 0 ? 100 : Math.round((doneCount / total) * 100);
 
+  const growthHasContent =
+    !growthBook || growthBook.notes + growthBook.milestones + growthBook.photos > 0;
+
   const safeTab =
-    (tab === 'growth' && !features?.growth) || (tab === 'grades' && !features?.grades)
+    (tab === 'growth' && !(features?.growth && growthHasContent)) ||
+    (tab === 'grades' && !features?.grades)
       ? 'home'
       : tab;
 
@@ -123,7 +132,9 @@ export function ParentApp({
     { key: 'home', label: '首頁', icon: '🏠' },
     { key: 'contact', label: '聯絡簿', icon: '📒' },
     { key: 'announcements', label: '公告', icon: '📣' },
-    ...(features?.growth ? [{ key: 'growth', label: '成長', icon: '🌱' } as TabItem] : []),
+    ...(features?.growth && growthHasContent
+      ? [{ key: 'growth', label: '成長', icon: '🌱' } as TabItem]
+      : []),
     ...(features?.grades ? [{ key: 'grades', label: '成績', icon: '📊' } as TabItem] : []),
   ];
   tabOrderRef.current = tabs.map((t) => t.key);
@@ -272,6 +283,13 @@ export function ParentApp({
               onClick={() => onSelectTab('contact')}
             />
 
+            {features?.growth && (todayPhotos?.length ?? 0) > 0 && (
+              <div className="card">
+                <div className="lab">📸 今天的孩子</div>
+                <PhotoGrid photos={todayPhotos ?? []} onOpen={setOpenPhoto} />
+              </div>
+            )}
+
             <div className="home-primary">
               <button type="button" className="home-primary-btn" onClick={() => onSelectTab('contact')}>
                 <div className="hp-i">📒</div>
@@ -374,6 +392,7 @@ export function ParentApp({
           </div>
         )}
       </PhoneShell>
+      <PhotoViewer photo={openPhoto} onClose={() => setOpenPhoto(null)} />
     </div>
   );
 }

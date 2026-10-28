@@ -122,9 +122,12 @@ export interface GrowthItem {
 export interface Photo {
   id: string;
   studentId: string | null;
+  studentIds: string[];
   caption: string | null;
   storagePath: string;
   visibility: PhotoVisibility;
+  url: string | null;
+  createdAt: string;
 }
 
 /** Phone-calendar alarm: none, previous evening 19:00, or same-day 07:00 (Taipei). */

@@ -851,6 +851,21 @@ export type Database = {
           },
         ]
       }
+      photo_students: {
+        Row: {
+          photo_id: string
+          student_id: string
+        }
+        Insert: {
+          photo_id: string
+          student_id: string
+        }
+        Update: {
+          photo_id?: string
+          student_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string

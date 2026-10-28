@@ -27,6 +27,7 @@ export function useClassRealtime(classId: string | undefined) {
           break;
         case 'performance_notes':
         case 'milestones':
+        case 'photos':
           qc.invalidateQueries({ queryKey: ['growth'] });
           break;
         case 'class_features':
